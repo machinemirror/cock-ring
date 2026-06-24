@@ -34,9 +34,10 @@ const TEMPLATE = `
 
     <div class="cr-overlay hidden" id="cr-screen-select">
       <h2 class="cr-h2">Cock Ring Circuit</h2>
-      <div class="cr-grid" id="cr-roster"></div>
+      <p class="cr-tag">choose your opponent</p>
+      <div class="cr-levels" id="cr-roster"></div>
       <p class="cr-stats" id="cr-record"></p>
-      <button class="cr-btn secondary" id="cr-back-start">Back</button>
+      <button class="cr-btn secondary" id="cr-back-start">Back to Title</button>
     </div>
 
     <div class="cr-overlay hidden" id="cr-screen-tutorial">
@@ -188,40 +189,41 @@ export class Game {
   }
 
   _buildRoster() {
-    const grid = this.root.querySelector("#cr-roster");
-    grid.innerHTML = "";
+    const list = this.root.querySelector("#cr-roster");
+    list.innerHTML = "";
     OPPONENTS.forEach((o, i) => {
-      const card = document.createElement("button");
-      card.className = "cr-card";
-      card.dataset.id = o.id;
-      card.innerHTML = `
-        <span class="swatch" style="background:${o.palette.body}"></span>
-        <span class="num">#${i + 1}</span>
-        <span class="name">${o.name}</span>
-        <span class="mech">${o.mechanic}</span>
-        <span class="badge"></span>`;
-      card.onclick = () => {
-        if (card.classList.contains("locked")) return;
+      const btn = document.createElement("button");
+      btn.className = "cr-level";
+      btn.dataset.id = o.id;
+      btn.style.setProperty("--c", o.palette.body); // per-opponent tint stripe
+      btn.innerHTML = `<span class="t">Bout ${i + 1} · ${o.name}</span><small></small>`;
+      btn.onclick = () => {
+        if (btn.classList.contains("locked")) return;
         this.selectedId = o.id;
         this._showTutorial();
       };
-      grid.appendChild(card);
+      list.appendChild(btn);
     });
     this._refreshRoster();
   }
 
   _refreshRoster() {
     const state = Progression.get();
-    this.root.querySelectorAll(".cr-card").forEach((card) => {
-      const id = card.dataset.id;
+    this.root.querySelectorAll(".cr-level").forEach((btn, i) => {
+      const id = btn.dataset.id;
       const unlocked = Progression.isUnlocked(id);
       const beaten = Progression.isDefeated(id);
-      card.classList.toggle("locked", !unlocked);
-      card.classList.toggle("beaten", beaten);
-      const badge = card.querySelector(".badge");
-      if (!unlocked) badge.textContent = "🔒 Locked";
-      else if (beaten) badge.textContent = "✔ Defeated  " + this._fmt(state.bestTimes[id]);
-      else badge.textContent = "▶ Available";
+      btn.classList.toggle("locked", !unlocked);
+      btn.classList.toggle("beaten", beaten);
+      const sub = btn.querySelector("small");
+      if (!unlocked) {
+        const prev = OPPONENTS[i - 1];
+        sub.textContent = prev ? `🔒 beat ${prev.name} first` : "🔒 Locked";
+      } else if (beaten) {
+        sub.textContent = `✔ Defeated · best ${this._fmt(state.bestTimes[id])}`;
+      } else {
+        sub.textContent = "▶ Fight";
+      }
     });
     const rec = this.root.querySelector("#cr-record");
     if (rec) rec.textContent = `Wins: ${state.wins}   Losses: ${state.losses}`;
