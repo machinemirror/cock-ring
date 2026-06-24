@@ -324,13 +324,15 @@ export class Game {
     this.renderer.drawArena(t, excite);
 
     if (inFight) {
+      // Tail fans up BEHIND the opponent; body + pecking head in FRONT.
+      this.renderer.drawPlayerTail(this.player, this.engine.elapsed);
       this.renderer.drawOpponent(this.engine);
-      this.renderer.drawPlayer(this.player, this.engine.elapsed);
+      this.renderer.drawPlayerBody(this.player, this.engine.elapsed);
       this.renderer.drawReferee(this.engine);
       this.renderer.drawHud(this.engine, this.player);
     } else {
       // Idle showcase rooster behind menus.
-      this.renderer.drawPlayer(this.player, t);
+      this.renderer.drawPlayerFull(this.player, t);
     }
     ctx.restore();
   }

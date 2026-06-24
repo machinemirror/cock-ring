@@ -1,5 +1,7 @@
-// Barnyard Circuit roster. Each entry is pure config — the fight engine reads
-// these flags to shape behavior, so a new opponent is "just data".
+// Barnyard Circuit roster. The opponents are the Egg Time cast (the narcs, the
+// GBS agents and Todd), drawn in Egg Time's own canvas-primitive style. Each
+// entry is pure config — the fight engine reads these flags to shape behavior,
+// so a new opponent is "just data".
 //
 // Fields:
 //   id, name            identity
@@ -7,7 +9,8 @@
 //   personality         flavor text for the select screen
 //   mechanic            one-line description of what this fight teaches
 //   coachTip            line the pig coach says before the fight
-//   palette             {body, accent, dark, comb, eye} canvas colors
+//   art                 which Egg Time character art to use: 'narc' | 'gbs' | 'todd'
+//   palette             {body, accent, dark, comb, eye} canvas colors (tints the art)
 //   build               body shape hint for the renderer: 'lean' | 'stocky' | 'huge'
 //   maxHealth           opponent HP per knockdown
 //   knockdownsToWin     how many knockdowns the player must score to KO them
@@ -27,6 +30,7 @@ export const OPPONENTS = [
   {
     id: "rat",
     name: "Rat",
+    art: "narc",
     inspiration: "Glass Joe",
     personality: "A twitchy snitch who folds under pressure.",
     mechanic: "Tutorial. Slow, obvious tells — learn to dodge and counter.",
@@ -50,6 +54,7 @@ export const OPPONENTS = [
   {
     id: "fink",
     name: "Fink",
+    art: "narc",
     inspiration: "Von Kaiser",
     personality: "Drilled, stiff, telegraphs everything he does.",
     mechanic: "Clear left/right tells — read the attack direction before you slip.",
@@ -73,6 +78,7 @@ export const OPPONENTS = [
   {
     id: "narc",
     name: "Narc",
+    art: "narc",
     inspiration: "Piston Honda",
     personality: "Slick informant who never stops talking — or swinging.",
     mechanic: "Fast combo strings. Manage stamina; don't panic-swipe.",
@@ -96,6 +102,7 @@ export const OPPONENTS = [
   {
     id: "snitch",
     name: "Snitch",
+    art: "narc",
     inspiration: "Don Flamenco",
     personality: "Vain, theatrical, waiting for you to overcommit.",
     mechanic: "Punishes button-mashing. Only peck inside a counter window.",
@@ -119,6 +126,7 @@ export const OPPONENTS = [
   {
     id: "tattler",
     name: "Tattler",
+    art: "narc",
     inspiration: "King Hippo",
     personality: "Enormous gossip with an armored gut and one soft spot.",
     mechanic: "Has a weak spot that opens briefly. Wait for the opening.",
@@ -142,6 +150,7 @@ export const OPPONENTS = [
   {
     id: "gbs-agent",
     name: "GBS Agent",
+    art: "gbs",
     inspiration: "Great Tiger",
     personality: "Faceless operative who fights with feints and misdirection.",
     mechanic: "Uses fake tells. Read real attacks from bluffs — patience wins.",
@@ -165,6 +174,7 @@ export const OPPONENTS = [
   {
     id: "gbs-leader",
     name: "GBS Leader",
+    art: "gbs",
     inspiration: "Bald Bull",
     personality: "The bureau's enforcer. One charge can end you.",
     mechanic: "Devastating charge attack — counter it with precise timing.",
@@ -188,6 +198,7 @@ export const OPPONENTS = [
   {
     id: "todd",
     name: "Todd",
+    art: "todd",
     inspiration: "Mr. Sandman / Tyson",
     personality: "The champ of the Barnyard Circuit. Knows every trick you've learned.",
     mechanic: "Final boss. Combines every mechanic and grows stronger each knockdown.",
