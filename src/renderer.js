@@ -187,6 +187,10 @@ export class Renderer {
 
     if (cfg.art === "todd") {
       this._drawTodd(cx, baseY, s, pose, woundFrac, engine.elapsed);
+    } else if (cfg.id === "gbs-agent") {
+      this._drawRiotAgent(cx, baseY, s, pose, woundFrac, engine.elapsed);
+    } else if (cfg.id === "gbs-leader") {
+      this._drawFatLeader(cx, baseY, s, pose, woundFrac, engine.elapsed);
     } else {
       this._drawSuit(cx, baseY, s, this._skin(cfg), pose, woundFrac, engine.elapsed);
     }
@@ -196,18 +200,6 @@ export class Renderer {
 
   _skin(cfg) {
     const p = cfg.palette;
-    if (cfg.art === "gbs") {
-      const leader = cfg.id === "gbs-leader";
-      return {
-        kind: "gbs",
-        suit: "#1d2436", suit2: "#2c3550",
-        accent: p.body, vest: "GBS",
-        label: leader ? "LEADER" : "AGENT",
-        labelColor: "#cdd6df",
-        head: "helmet",
-        glove: "#0a0d16",
-      };
-    }
     return {
       kind: "narc",
       suit: "#16181c", suit2: "#262a30",
@@ -605,6 +597,223 @@ export class Renderer {
       const dy = hy - R * 0.3 + a * R * 1.6;
       ctx.beginPath(); ctx.ellipse(dx, dy, 3.2, 5, 0, 0, Math.PI * 2); ctx.fill();
     }
+
+    ctx.restore();
+  }
+
+  // ---- GBS Agent: forward-facing riot trooper (Egg Time Lv6 Downtown agent) ----
+  _drawRiotAgent(cx, baseY, s, pose, woundFrac, t) {
+    const ctx = this.ctx;
+    const armor = "#2b3344", plate = "#1c2230", glove = "#0a0d16";
+    ctx.save();
+    ctx.translate(cx + pose.shake, baseY);
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.beginPath(); ctx.ellipse(0, 34, 96 * 0.5, 14, 0, 0, Math.PI * 2); ctx.fill();
+    if (pose.down) { this._drawArmoredDowned(s, armor, pose.ko); ctx.restore(); return; }
+    ctx.translate(pose.lean, pose.drop); ctx.scale(s, s);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+
+    // trunks
+    ctx.fillStyle = "#11151f";
+    ctx.beginPath(); ctx.moveTo(-46, 0); ctx.lineTo(46, 0); ctx.lineTo(40, 44); ctx.lineTo(-40, 44); ctx.closePath(); ctx.fill();
+
+    const restGlove = (sgn) => {
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 20;
+      ctx.beginPath(); ctx.moveTo(sgn * 80, -120); ctx.lineTo(sgn * 104, -34); ctx.stroke();
+      ctx.strokeStyle = armor; ctx.lineWidth = 15;
+      ctx.beginPath(); ctx.moveTo(sgn * 80, -120); ctx.lineTo(sgn * 104, -34); ctx.stroke();
+      this._glove(sgn * 104, -34, 22, glove);
+    };
+    const punchSide = pose.armSide || 1;
+    if (pose.armExtend < 0.15) { restGlove(-1); restGlove(1); } else restGlove(-punchSide);
+
+    // armored torso
+    ctx.beginPath();
+    ctx.moveTo(-58, 4); ctx.quadraticCurveTo(-74, -72, -88, -148);
+    ctx.quadraticCurveTo(-50, -176, 0, -176);
+    ctx.quadraticCurveTo(50, -176, 88, -148);
+    ctx.quadraticCurveTo(74, -72, 58, 4); ctx.closePath();
+    ctx.fillStyle = armor; ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 5; ctx.stroke();
+    // chest + ab plates
+    ctx.fillStyle = plate;
+    ctx.fillRect(-46, -150, 92, 30);
+    ctx.fillRect(-46, -112, 92, 38);
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 3;
+    ctx.strokeRect(-46, -150, 92, 30); ctx.strokeRect(-46, -112, 92, 38);
+    // GBS stencil
+    ctx.fillStyle = "#cfd6e0";
+    ctx.font = "900 34px" + FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("GBS", 0, -135);
+    ctx.textBaseline = "alphabetic";
+
+    this._wounds(woundFrac, -150, 0);
+
+    // punching arm
+    if (pose.armExtend >= 0.15) {
+      const e = pose.armExtend;
+      const gx = punchSide * (40 + e * 30), gy = -150 + e * 150;
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 24;
+      ctx.beginPath(); ctx.moveTo(punchSide * 80, -132); ctx.lineTo(gx, gy); ctx.stroke();
+      ctx.strokeStyle = armor; ctx.lineWidth = 18;
+      ctx.beginPath(); ctx.moveTo(punchSide * 80, -132); ctx.lineTo(gx, gy); ctx.stroke();
+      this._glove(gx, gy, 24 + e * 22, glove);
+    }
+
+    // neck + helmeted head
+    ctx.fillStyle = "#d9b48a"; ctx.fillRect(-16, -196, 32, 30);
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 4; ctx.strokeRect(-16, -196, 32, 30);
+    const hy = -228, R = 40;
+    // chin/face skin
+    ctx.fillStyle = "#d9b48a";
+    ctx.beginPath(); ctx.ellipse(0, hy, R, R + 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 5; ctx.stroke();
+    // visor band over the eyes (blue-tinted)
+    ctx.fillStyle = plate; ctx.fillRect(-R, hy - 18, R * 2, 26);
+    ctx.fillStyle = "rgba(120,165,195,.5)"; ctx.fillRect(-R + 6, hy - 14, R * 2 - 12, 12);
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 4; ctx.strokeRect(-R, hy - 18, R * 2, 26);
+    // helmet dome
+    ctx.fillStyle = plate;
+    ctx.beginPath(); ctx.arc(0, hy - 18, R + 2, Math.PI, 0); ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 5; ctx.stroke();
+    // grim mouth / wounds (pecked through the visor at high damage)
+    if (pose.expr === "hurt" || pose.expr === "dazed") {
+      ctx.strokeStyle = "#5a1e1e"; ctx.lineWidth = 4; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(-10, hy + 22); ctx.quadraticCurveTo(0, hy + 16, 10, hy + 22); ctx.stroke();
+    } else {
+      ctx.fillStyle = "#5a1e1e"; ctx.fillRect(-10, hy + 18, 20, 5);
+    }
+    this._faceWounds(hy, R, woundFrac, t);
+
+    ctx.restore();
+  }
+
+  _drawArmoredDowned(s, armor, ko) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.scale(s, s); ctx.translate(0, 10);
+    ctx.fillStyle = armor;
+    ctx.beginPath(); ctx.ellipse(0, 0, 96, 30, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = "#1c2230";
+    ctx.beginPath(); ctx.arc(-86, -6, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (ko) {
+      ctx.strokeStyle = "#9af"; ctx.lineWidth = 3;
+      for (const dx of [-96, -76]) {
+        ctx.beginPath();
+        ctx.moveTo(dx - 5, -10); ctx.lineTo(dx + 5, -2);
+        ctx.moveTo(dx + 5, -10); ctx.lineTo(dx - 5, -2);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // ---- GBS Leader: fat military officer (Egg Time Lv7 fat agent), facing us ----
+  _drawFatLeader(cx, baseY, s, pose, woundFrac, t) {
+    const ctx = this.ctx;
+    const olive = "#4f5836", olive2 = "#3c4329", skin = "#e7b48a", skin2 = "#cf9a72", gold = "#caa83a";
+    ctx.save();
+    ctx.translate(cx + pose.shake, baseY);
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.beginPath(); ctx.ellipse(0, 34, 110 * 0.5, 14, 0, 0, Math.PI * 2); ctx.fill();
+    if (pose.down) {
+      ctx.save(); ctx.scale(s, s); ctx.translate(0, 10);
+      ctx.fillStyle = olive;
+      ctx.beginPath(); ctx.ellipse(0, 0, 104, 34, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 4; ctx.stroke();
+      ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(-92, -6, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.restore(); ctx.restore();
+      return;
+    }
+    ctx.translate(pose.lean, pose.drop); ctx.scale(s, s);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+
+    // stocky olive legs
+    ctx.fillStyle = olive2;
+    ctx.fillRect(-40, 0, 32, 46); ctx.fillRect(8, 0, 32, 46);
+
+    const restGlove = (sgn) => {
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 20;
+      ctx.beginPath(); ctx.moveTo(sgn * 84, -96); ctx.lineTo(sgn * 110, -30); ctx.stroke();
+      ctx.strokeStyle = olive; ctx.lineWidth = 15;
+      ctx.beginPath(); ctx.moveTo(sgn * 84, -96); ctx.lineTo(sgn * 110, -30); ctx.stroke();
+      this._glove(sgn * 110, -30, 24, "#c0271f");
+    };
+    const punchSide = pose.armSide || 1;
+    if (pose.armExtend < 0.15) { restGlove(-1); restGlove(1); } else restGlove(-punchSide);
+
+    // BIG belly / olive jacket
+    ctx.fillStyle = olive;
+    ctx.beginPath(); ctx.ellipse(0, -70, 92, 80, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 5; ctx.stroke();
+    // shoulders
+    ctx.fillStyle = olive;
+    ctx.beginPath(); ctx.moveTo(-84, -120); ctx.quadraticCurveTo(0, -150, 84, -120); ctx.lineTo(78, -96); ctx.lineTo(-78, -96); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 4; ctx.stroke();
+    // centre seam + gold buttons
+    ctx.strokeStyle = olive2; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(0, -128); ctx.lineTo(0, -24); ctx.stroke();
+    ctx.fillStyle = gold;
+    for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(0, -116 + i * 22, 5, 0, Math.PI * 2); ctx.fill(); }
+    // belt
+    ctx.fillStyle = "#241c10"; ctx.fillRect(-84, -34, 168, 14);
+    ctx.fillStyle = gold; ctx.fillRect(-10, -34, 20, 14);
+    // epaulettes
+    ctx.fillStyle = gold; ctx.fillRect(-88, -128, 28, 10); ctx.fillRect(60, -128, 28, 10);
+    // medal ribbons + GBS pocket
+    for (let i = 0; i < 3; i++) { ctx.fillStyle = ["#b22", "#2a7", "#36c"][i]; ctx.fillRect(-70, -118 + i * 9, 30, 7); }
+    ctx.fillStyle = olive2; ctx.fillRect(34, -120, 40, 26);
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(34, -120, 40, 26);
+    ctx.fillStyle = "#ffd24a"; ctx.font = "900 16px" + FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("GBS", 54, -107); ctx.textBaseline = "alphabetic";
+
+    this._wounds(woundFrac, -120, 0);
+
+    // punching arm
+    if (pose.armExtend >= 0.15) {
+      const e = pose.armExtend;
+      const gx = punchSide * (44 + e * 30), gy = -110 + e * 130;
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 24;
+      ctx.beginPath(); ctx.moveTo(punchSide * 84, -100); ctx.lineTo(gx, gy); ctx.stroke();
+      ctx.strokeStyle = olive; ctx.lineWidth = 18;
+      ctx.beginPath(); ctx.moveTo(punchSide * 84, -100); ctx.lineTo(gx, gy); ctx.stroke();
+      this._glove(gx, gy, 26 + e * 22, "#c0271f");
+    }
+
+    // neck + round head
+    ctx.fillStyle = skin; ctx.fillRect(-16, -168, 32, 24);
+    const hy = -196, R = 34;
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(0, hy, R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 5; ctx.stroke();
+    // ears + nose
+    ctx.fillStyle = skin2;
+    ctx.beginPath(); ctx.arc(-R, hy + 2, 7, 0, Math.PI * 2); ctx.arc(R, hy + 2, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, hy + 8, 6, 8, 0, 0, Math.PI * 2); ctx.fill();
+    // smug smile / grimace
+    if (pose.expr === "hurt" || pose.expr === "dazed") {
+      ctx.fillStyle = "#5a1e1e"; ctx.beginPath(); ctx.ellipse(0, hy + 22, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.strokeStyle = "#5a1e1e"; ctx.lineWidth = 4; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(-12, hy + 18); ctx.quadraticCurveTo(0, hy + 28, 12, hy + 18); ctx.stroke();
+      ctx.fillStyle = "#fff"; ctx.fillRect(-9, hy + 18, 18, 3);
+    }
+    // aviator shades
+    ctx.fillStyle = "#0a0a0a";
+    ctx.beginPath(); ctx.ellipse(-12, hy - 6, 11, 8, 0, 0, Math.PI * 2); ctx.ellipse(12, hy - 6, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-3, hy - 8, 6, 4);
+    ctx.fillStyle = "rgba(150,180,210,.5)";
+    ctx.beginPath(); ctx.arc(-15, hy - 8, 3, 0, Math.PI * 2); ctx.arc(9, hy - 8, 3, 0, Math.PI * 2); ctx.fill();
+    // peaked military cap
+    ctx.fillStyle = olive;
+    ctx.beginPath(); ctx.ellipse(0, hy - 30, R + 4, 18, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = olive2; ctx.fillRect(-R - 4, hy - 32, (R + 4) * 2, 10);
+    ctx.fillStyle = "#15180e"; ctx.beginPath(); ctx.ellipse(0, hy - 22, R + 10, 8, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(0, hy - 28, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(0, hy - 30, R + 4, 18, 0, Math.PI, 0); ctx.stroke();
+
+    this._faceWounds(hy, R, woundFrac, t);
 
     ctx.restore();
   }
