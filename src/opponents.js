@@ -8,7 +8,6 @@
 //   inspiration         the classic fighter it nods to (credit only; original impl)
 //   personality         flavor text for the select screen
 //   mechanic            one-line description of what this fight teaches
-//   coachTip            line the pig coach says before the fight
 //   art                 which Egg Time character art to use: 'narc' | 'gbs' | 'todd'
 //   palette             {body, accent, dark, comb, eye} canvas colors (tints the art)
 //   build               body shape hint for the renderer: 'lean' | 'stocky' | 'huge'
@@ -34,7 +33,6 @@ export const OPPONENTS = [
     inspiration: "Glass Joe",
     personality: "A twitchy snitch who folds under pressure.",
     mechanic: "Tutorial. Slow, obvious tells — learn to dodge and counter.",
-    coachTip: "Watch him wind up, slip the punch, then peck while he's off balance. Easy.",
     palette: { body: "#9aa0a8", accent: "#cfd4da", dark: "#5d636b", comb: "#ff7a7a", eye: "#111" },
     build: "lean",
     maxHealth: 60,
@@ -58,7 +56,6 @@ export const OPPONENTS = [
     inspiration: "Von Kaiser",
     personality: "Drilled, stiff, telegraphs everything he does.",
     mechanic: "Clear left/right tells — read the attack direction before you slip.",
-    coachTip: "He leans the way he's about to swing. Dodge the SAME way he leans to slip it.",
     palette: { body: "#7fae5a", accent: "#bfe39a", dark: "#4c6f33", comb: "#ffd24a", eye: "#111" },
     build: "lean",
     maxHealth: 80,
@@ -82,7 +79,6 @@ export const OPPONENTS = [
     inspiration: "Piston Honda",
     personality: "Slick informant who never stops talking — or swinging.",
     mechanic: "Fast combo strings. Manage stamina; don't panic-swipe.",
-    coachTip: "He throws in bursts. Slip the whole string, THEN counter. Don't burn all your stamina.",
     palette: { body: "#5a8bd6", accent: "#a9c8f5", dark: "#34568c", comb: "#ff5a5a", eye: "#111" },
     build: "lean",
     maxHealth: 95,
@@ -106,7 +102,6 @@ export const OPPONENTS = [
     inspiration: "Don Flamenco",
     personality: "Vain, theatrical, waiting for you to overcommit.",
     mechanic: "Punishes button-mashing. Only peck inside a counter window.",
-    coachTip: "Stay patient. If you peck when he's not stunned, he'll make you pay. Counters only.",
     palette: { body: "#b15ad6", accent: "#e0a9f5", dark: "#6f348c", comb: "#ffd24a", eye: "#111" },
     build: "lean",
     maxHealth: 100,
@@ -130,7 +125,6 @@ export const OPPONENTS = [
     inspiration: "King Hippo",
     personality: "Enormous gossip with an armored gut and one soft spot.",
     mechanic: "Has a weak spot that opens briefly. Wait for the opening.",
-    coachTip: "Your jabs bounce off him. After you slip a punch his guard drops — THAT'S when you strike.",
     palette: { body: "#e58fb0", accent: "#ffd0e0", dark: "#a85070", comb: "#ffd24a", eye: "#111" },
     build: "huge",
     maxHealth: 120,
@@ -154,7 +148,6 @@ export const OPPONENTS = [
     inspiration: "Great Tiger",
     personality: "Faceless operative who fights with feints and misdirection.",
     mechanic: "Uses fake tells. Read real attacks from bluffs — patience wins.",
-    coachTip: "Half his wind-ups are bluffs. If he double-pumps, it's fake — don't bite. Only slip the real one.",
     palette: { body: "#3fb6a8", accent: "#9ff0e6", dark: "#1f6e64", comb: "#ffd24a", eye: "#fff" },
     build: "lean",
     maxHealth: 110,
@@ -178,7 +171,6 @@ export const OPPONENTS = [
     inspiration: "Bald Bull",
     personality: "The bureau's enforcer. One charge can end you.",
     mechanic: "Devastating charge attack — counter it with precise timing.",
-    coachTip: "When he rears WAY back, that's the charge. Peck him right as he lunges to drop him, or eat a haymaker.",
     palette: { body: "#d65a5a", accent: "#f5a9a9", dark: "#8c3434", comb: "#ffd24a", eye: "#111" },
     build: "stocky",
     maxHealth: 130,
@@ -202,7 +194,6 @@ export const OPPONENTS = [
     inspiration: "Mr. Sandman / Tyson",
     personality: "The champ of the Pecking Order. Knows every trick you've learned.",
     mechanic: "Final boss. Combines every mechanic and grows stronger each knockdown.",
-    coachTip: "This is everything you've trained for, kid. Fakes, combos, charges — all of it. Stay sharp every second.",
     palette: { body: "#23232b", accent: "#ffd24a", dark: "#000", comb: "#ff5a5a", eye: "#ffd24a" },
     build: "stocky",
     maxHealth: 120,

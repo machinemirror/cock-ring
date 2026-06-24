@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.2.4";
+const VERSION = "0.2.5";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -205,7 +205,7 @@ export class Game {
   _showTutorial() {
     const cfg = opponentById(this.selectedId);
     this.root.querySelector("#cr-tut-name").textContent = `Next up: ${cfg.name}`;
-    this.root.querySelector("#cr-tut-tip").textContent = cfg.coachTip;
+    this.root.querySelector("#cr-tut-tip").textContent = cfg.personality;
     this._drawCoach();
     this._show("tutorial");
   }
