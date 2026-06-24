@@ -1,4 +1,4 @@
-// Barnyard Circuit roster. The opponents are the Egg Time cast (the narcs, the
+// Cock Ring Circuit roster. The opponents are the Egg Time cast (the narcs, the
 // GBS agents and Todd), drawn in Egg Time's own canvas-primitive style. Each
 // entry is pure config — the fight engine reads these flags to shape behavior,
 // so a new opponent is "just data".
@@ -200,7 +200,7 @@ export const OPPONENTS = [
     name: "Todd",
     art: "todd",
     inspiration: "Mr. Sandman / Tyson",
-    personality: "The champ of the Barnyard Circuit. Knows every trick you've learned.",
+    personality: "The champ of the Cock Ring Circuit. Knows every trick you've learned.",
     mechanic: "Final boss. Combines every mechanic and grows stronger each knockdown.",
     coachTip: "This is everything you've trained for, kid. Fakes, combos, charges — all of it. Stay sharp every second.",
     palette: { body: "#23232b", accent: "#ffd24a", dark: "#000", comb: "#ff5a5a", eye: "#ffd24a" },

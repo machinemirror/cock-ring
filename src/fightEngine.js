@@ -61,6 +61,22 @@ export class FightEngine {
     this.result = null;      // 'win' | 'lose'
     this.banner = null;      // {text, until} transient on-canvas message
     this.fxFlash = 0;        // screen flash strength 0..1
+    this.lens = [];          // blood splattered on the "camera lens" (screen space)
+  }
+
+  // Splatter blood across the lens (Egg Time Lv2 cock-fight style). Heavier on
+  // counters; each splat fades over a few seconds.
+  addLensBlood(n) {
+    for (let i = 0; i < n; i++) {
+      this.lens.push({
+        x: 60 + Math.random() * 420,
+        y: 120 + Math.random() * 620,
+        r: 8 + Math.random() * 26,
+        a: 0.85,
+        drip: Math.random() < 0.5 ? 12 + Math.random() * 40 : 0,
+      });
+    }
+    if (this.lens.length > 60) this.lens.splice(0, this.lens.length - 60);
   }
 
   get weakSpotActive() {
@@ -245,6 +261,7 @@ export class FightEngine {
     this.opp.health = Math.max(0, this.opp.health - amount);
     this.opp.lastHurt = this.elapsed;
     this.opp.shakeUntil = this.elapsed + 140;
+    this.addLensBlood(fromCounter ? 5 : 2);
     this.event("opponent-hit");
     if (this.opp.health <= 0) {
       this.knockOpponentDown();
@@ -285,6 +302,10 @@ export class FightEngine {
     this.elapsed += dt;
     if (this.fxFlash > 0) this.fxFlash = Math.max(0, this.fxFlash - dt / 220);
     if (this.weakSpotTimer > 0) this.weakSpotTimer -= dt;
+    if (this.lens.length) {
+      for (const l of this.lens) l.a -= dt / 4000;
+      this.lens = this.lens.filter((l) => l.a > 0);
+    }
 
     if (this.result === "win" || this.result === "lose") {
       // Let terminal poses animate; the game layer handles screen transition.

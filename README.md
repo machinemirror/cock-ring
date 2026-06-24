@@ -1,7 +1,7 @@
 # 🥊 Cock Ring
 
 A mobile-first, **HTML5 Canvas** boxing game. You play **Large Cock**, a rooster
-boxer fighting his way through the **Barnyard Circuit** — read each opponent's
+boxer fighting his way through the **Cock Ring Circuit** — read each opponent's
 tells, slip their punches, manage your stamina, charge the **Golden Egg** meter,
 and knock them all out.
 
@@ -76,7 +76,7 @@ stamina (and some opponents punish it). Fill the meter for a screen-clearing
 special. Drop an opponent enough times to win; get dropped three times and you
 lose.
 
-## Opponent lineup (Barnyard Circuit)
+## Opponent lineup (Cock Ring Circuit)
 
 | #  | Opponent     | Teaches                                              |
 | -- | ------------ | --------------------------------------------------- |
@@ -89,8 +89,9 @@ lose.
 | 7  | **GBS Leader** | Precise timing to counter a devastating charge    |
 | 8  | **Todd**     | Final boss — every mechanic, multiple phases        |
 
-Supporting cast: a crowd of **hens**, a **fox** referee who counts knockdowns,
-and **Coach Hamhock**, the **pig** corner-man who gives a tip before each fight.
+Supporting cast: a clustered crowd of **hens**, a little **chick** referee who
+counts knockdowns, and **Coach Hamhock**, the **pig** corner-man who gives a tip
+before each fight. Characters are drawn in the style of the Egg Time cast.
 
 ## Future Egg Time integration
 

@@ -23,14 +23,14 @@ const TEMPLATE = `
 
     <div class="cr-overlay" id="cr-screen-start">
       <h1 class="cr-title">COCK RING</h1>
-      <p class="cr-subtitle">Barnyard Circuit — read the tells, slip the punch, counter hard.</p>
+      <p class="cr-subtitle">Cock Ring Circuit — read the tells, slip the punch, counter hard.</p>
       <button class="cr-btn" id="cr-play">FIGHT</button>
       <button class="cr-btn secondary" id="cr-reset">Reset Progress</button>
       <p class="cr-legal">100% original code, characters, art and audio. Not affiliated with or derived from any commercial boxing game or its assets.</p>
     </div>
 
     <div class="cr-overlay hidden" id="cr-screen-select">
-      <h2 class="cr-h2">Barnyard Circuit</h2>
+      <h2 class="cr-h2">Cock Ring Circuit</h2>
       <div class="cr-grid" id="cr-roster"></div>
       <p class="cr-stats" id="cr-record"></p>
       <button class="cr-btn secondary" id="cr-back-start">Back</button>
@@ -270,7 +270,7 @@ export class Game {
       const last = idx === OPPONENTS.length - 1;
       titleEl.textContent = last ? "CHAMPION!" : "WINNER!";
       textEl.textContent = last
-        ? `You cleaned out the whole Barnyard Circuit in this fight at ${this._fmt(r.time)}. ${FIGHTER_NAME} is the champ!`
+        ? `You cleaned out the whole Cock Ring Circuit in this fight at ${this._fmt(r.time)}. ${FIGHTER_NAME} is the champ!`
         : `You knocked out ${cfg.name} in ${this._fmt(r.time)}. The next contender is unlocked.`;
       nextBtn.textContent = last ? "Take a Bow" : "Next Fight";
     } else {
@@ -324,10 +324,12 @@ export class Game {
     this.renderer.drawArena(t, excite);
 
     if (inFight) {
-      // Tail fans up BEHIND the opponent; body + pecking head in FRONT.
-      this.renderer.drawPlayerTail(this.player, this.engine.elapsed);
+      // We're behind Large Cock: opponent first, then his body, then his big
+      // tail feathers IN FRONT (closest to camera), then blood on the lens.
       this.renderer.drawOpponent(this.engine);
       this.renderer.drawPlayerBody(this.player, this.engine.elapsed);
+      this.renderer.drawPlayerTail(this.player, this.engine.elapsed);
+      this.renderer.drawLensBlood(this.engine);
       this.renderer.drawReferee(this.engine);
       this.renderer.drawHud(this.engine, this.player);
     } else {

@@ -9,8 +9,9 @@
 export const LOGICAL_W = 540;
 export const LOGICAL_H = 960;
 
-const FLOOR_Y = LOGICAL_H * 0.78;  // ring mat line
-const OPP_BASE = LOGICAL_H * 0.70; // opponent waist baseline
+const FLOOR_Y = LOGICAL_H * 0.66;  // ring mat line (raised — ring sits high on screen)
+const OPP_BASE = LOGICAL_H * 0.62; // opponent waist baseline
+const FONT = "'Courier New', Courier, monospace"; // everything is courier
 
 export class Renderer {
   constructor(ctx) {
@@ -19,16 +20,20 @@ export class Renderer {
   }
 
   _makeCrowd() {
+    // A packed, OVERLAPPING wall of hens (Egg Time hen style). Drawn back rows
+    // first so front rows overlap them. Jittered x so they cluster, not a grid.
     const hens = [];
-    for (let row = 0; row < 2; row++) {
-      const count = 11 + row;
+    const rows = 4;
+    for (let row = 0; row < rows; row++) {
+      const count = 12 + row * 2;
       for (let i = 0; i < count; i++) {
+        const jitter = (Math.random() - 0.5) * (0.7 / count);
         hens.push({
-          x: (i + 0.5) / count,
+          x: (i + 0.5) / count + jitter,
           row,
           phase: Math.random() * Math.PI * 2,
           blink: Math.random() * 4,
-          hue: 18 + Math.random() * 26,
+          tint: 0.86 + Math.random() * 0.14, // slight brightness variation
         });
       }
     }
@@ -78,42 +83,58 @@ export class Renderer {
   }
 
   _drawCrowd(t, excite) {
+    // dim band behind the crowd so the white hens pop
     const ctx = this.ctx;
+    ctx.fillStyle = "#140d28";
+    ctx.fillRect(0, 0, LOGICAL_W, 200);
     for (const h of this.crowd) {
-      const x = 16 + h.x * (LOGICAL_W - 32);
-      const baseY = 150 + h.row * 46;
-      const bob = Math.sin(t / 360 + h.phase) * (2 + excite * 6);
-      const y = baseY - bob;
-      const r = 13 - h.row * 1.5;
-      ctx.fillStyle = `hsl(${h.hue}, 42%, ${52 - h.row * 6}%)`;
-      ctx.beginPath();
-      ctx.ellipse(x, y, r, r * 1.05, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#d8473c";
-      ctx.beginPath();
-      ctx.ellipse(x, y - r * 0.9, r * 0.45, r * 0.4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#e6a93a";
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + r * 0.55, y + 1);
-      ctx.lineTo(x, y + r * 0.4);
-      ctx.closePath();
-      ctx.fill();
-      const blinkOn = ((t / 1000 + h.blink) % 4) < 0.12;
-      if (!blinkOn) {
-        ctx.fillStyle = "#111";
-        ctx.beginPath();
-        ctx.arc(x - r * 0.22, y - r * 0.15, 1.6, 0, Math.PI * 2);
-        ctx.fill();
+      const x = 8 + h.x * (LOGICAL_W - 16);
+      const baseY = 70 + h.row * 30;          // tightly packed rows → overlap
+      const bob = Math.sin(t / 340 + h.phase) * (2 + excite * 6);
+      const r = 20 - h.row * 1.5;             // back rows smaller (perspective)
+      const flap = excite > 0.4 && Math.sin(t / 100 + h.phase) > 0.3;
+      this._henSmall(x, baseY - bob, r, t, h, flap);
+    }
+  }
+
+  // Small Egg-Time-style hen: round white body, jagged red comb, beak, wide
+  // worried eyes — packed shoulder-to-shoulder into the crowd.
+  _henSmall(x, y, r, t, h, flap) {
+    const ctx = this.ctx;
+    const white = `rgba(255,255,255,${h.tint})`;
+    // body
+    ctx.fillStyle = white;
+    ctx.beginPath(); ctx.ellipse(x, y + r * 0.5, r, r * 1.05, 0, 0, Math.PI * 2); ctx.fill();
+    // flapping wings when excited
+    if (flap) {
+      ctx.fillStyle = "rgba(244,246,249,0.95)";
+      for (const sgn of [-1, 1]) {
+        ctx.save();
+        ctx.translate(x + sgn * r * 0.9, y + r * 0.4);
+        ctx.rotate(sgn * (0.5 + Math.sin(t / 90) * 0.3));
+        ctx.beginPath(); ctx.ellipse(0, 0, r * 0.35, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
       }
-      if (excite > 0.5 && Math.sin(t / 110 + h.phase) > 0.4) {
-        ctx.strokeStyle = `hsl(${h.hue}, 40%, 40%)`;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(x - r, y); ctx.lineTo(x - r - 5, y - 6);
-        ctx.moveTo(x + r, y); ctx.lineTo(x + r + 5, y - 6);
-        ctx.stroke();
+    }
+    // head
+    ctx.fillStyle = white;
+    ctx.beginPath(); ctx.arc(x, y - r * 0.35, r * 0.62, 0, Math.PI * 2); ctx.fill();
+    // jagged red comb
+    ctx.fillStyle = "#ff5d4d";
+    for (const dx of [-0.32, 0, 0.32]) {
+      ctx.beginPath(); ctx.arc(x + dx * r, y - r * 0.95, r * 0.2, 0, Math.PI * 2); ctx.fill();
+    }
+    // beak
+    ctx.fillStyle = "#ffb01f";
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.18, y - r * 0.2); ctx.lineTo(x + r * 0.18, y - r * 0.2); ctx.lineTo(x, y - r * 0.02); ctx.closePath();
+    ctx.fill();
+    // worried eyes
+    const blinkOn = ((t / 1000 + h.blink) % 4) < 0.12;
+    if (!blinkOn) {
+      ctx.fillStyle = "#2b2118";
+      for (const sgn of [-1, 1]) {
+        ctx.beginPath(); ctx.arc(x + sgn * r * 0.26, y - r * 0.42, r * 0.1, 0, Math.PI * 2); ctx.fill();
       }
     }
   }
@@ -162,7 +183,7 @@ export class Renderer {
     const woundFrac = 1 - engine.opp.health / engine.opp.maxHealth;
     const cx = LOGICAL_W / 2;
     const baseY = OPP_BASE;
-    const s = cfg.build === "huge" ? 2.7 : cfg.build === "stocky" ? 2.35 : 2.0;
+    const s = cfg.build === "huge" ? 2.2 : cfg.build === "stocky" ? 1.95 : 1.7;
 
     if (cfg.art === "todd") {
       this._drawTodd(cx, baseY, s, pose, woundFrac, engine.elapsed);
@@ -284,7 +305,7 @@ export class Renderer {
     const label = sk.label;
     const fs = Math.min(30, 200 / (label.length * 0.62));
     ctx.fillStyle = sk.labelColor;
-    ctx.font = `900 ${fs}px 'Courier New', monospace`;
+    ctx.font = `900 ${fs}px ${FONT}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(label, 0, -104);
@@ -332,7 +353,8 @@ export class Renderer {
       ctx.beginPath(); ctx.ellipse(0, hy - 12, R - 2, R * 0.7, 0, Math.PI, Math.PI * 2); ctx.fill();
     }
 
-    this._face(sk.head, hy, R, pose.expr, t);
+    this._face(sk.head, hy, R, pose.expr, t, woundFrac);
+    this._faceWounds(hy, R, woundFrac, t);
 
     ctx.restore();
   }
@@ -348,10 +370,12 @@ export class Renderer {
     ctx.fillRect(x - r * 0.5, y + r * 0.6, r, 5);
   }
 
-  _face(head, hy, R, expr, t) {
+  _face(head, hy, R, expr, t, woundFrac = 0) {
     const ctx = this.ctx;
     const ex = 15, ey = hy - 4;
-    if (head === "sunglasses" && expr !== "hurt" && expr !== "dazed") {
+    // When badly pecked, the eyes become bloody sockets — drawn over everything
+    // (knocks the sunglasses/calm off). Handled by _faceWounds after the face.
+    if (head === "sunglasses" && expr !== "hurt" && expr !== "dazed" && woundFrac < 0.55) {
       ctx.fillStyle = "#000";
       ctx.fillRect(-R * 0.78, ey - 6, R * 0.7, 14);
       ctx.fillRect(R * 0.08, ey - 6, R * 0.7, 14);
@@ -407,6 +431,43 @@ export class Renderer {
     ctx.fillStyle = "#5a1e1e";
     ctx.beginPath(); ctx.ellipse(0, hy + 18, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.fillRect(-9, hy + 13, 18, 4);
+  }
+
+  // Pecks land on the FACE: cuts accumulate, then the eyes get beaked into
+  // bloody sockets as damage climbs (Egg Time cock-fight style).
+  _faceWounds(hy, R, frac, t) {
+    if (frac <= 0) return;
+    const ctx = this.ctx;
+    const ey = hy - 4, ex = 15;
+    // cuts / gashes on the face
+    const spots = [[-18, -12], [16, -8], [-8, 14], [12, 16], [0, -20], [20, 6], [-22, 4], [6, 20]];
+    const n = Math.min(spots.length, Math.round(frac * spots.length));
+    for (let i = 0; i < n; i++) {
+      const [wx, wy] = spots[i];
+      ctx.fillStyle = "rgba(120,20,30,.45)";
+      ctx.beginPath(); ctx.ellipse(wx, hy + wy * 0.5, 6, 4, i, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#8a0610"; ctx.lineWidth = 2.4; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(wx - 5, hy + wy * 0.5 - 2 + (i % 2) * 4);
+      ctx.lineTo(wx + 5, hy + wy * 0.5 + 2 - (i % 2) * 4);
+      ctx.stroke();
+    }
+    // pecked-out eyes: one at 0.55, both by 0.85
+    const sockets = frac >= 0.85 ? [-1, 1] : frac >= 0.55 ? [-1] : [];
+    for (const sgn of sockets) {
+      ctx.fillStyle = "#5a0a08";
+      ctx.beginPath(); ctx.arc(sgn * ex, ey, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#2b0604"; ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(sgn * ex - 5, ey - 5); ctx.lineTo(sgn * ex + 5, ey + 5);
+      ctx.moveTo(sgn * ex + 5, ey - 5); ctx.lineTo(sgn * ex - 5, ey + 5);
+      ctx.stroke();
+      // blood drip
+      ctx.fillStyle = "#9a0810";
+      ctx.beginPath();
+      ctx.moveTo(sgn * ex, ey + 5); ctx.lineTo(sgn * ex - 3, ey + 22); ctx.lineTo(sgn * ex + 3, ey + 22);
+      ctx.closePath(); ctx.fill();
+    }
   }
 
   _wounds(frac, top, bottom) {
@@ -533,7 +594,8 @@ export class Renderer {
     ctx.fillStyle = "#e6e6e6";
     ctx.beginPath(); ctx.arc(-R * 0.92, hy - 4, 8, 0, Math.PI * 2); ctx.arc(R * 0.92, hy - 4, 8, 0, Math.PI * 2); ctx.fill();
 
-    this._face("bald", hy, R, pose.expr, t);
+    this._face("bald", hy, R, pose.expr, t, woundFrac);
+    this._faceWounds(hy, R, woundFrac, t);
 
     // sweat
     ctx.fillStyle = "rgba(150,210,255,.9)";
@@ -562,11 +624,11 @@ export class Renderer {
     ctx.save();
     ctx.globalAlpha = flash ? 0.7 + 0.3 * Math.sin(engine.elapsed / 55) : 0.7;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = "900 30px sans-serif";
+    ctx.font = "900 30px" + FONT;
     ctx.lineWidth = 6; ctx.strokeStyle = "rgba(0,0,0,0.7)";
     ctx.fillStyle = a.charge ? "#ff4040" : "#ffd24a";
     ctx.strokeText(glyph, gx, gy); ctx.fillText(glyph, gx, gy);
-    if (a.charge) { ctx.font = "44px sans-serif"; ctx.fillText("⚡", cx, gy - 44); }
+    if (a.charge) { ctx.font = "44px" + FONT; ctx.fillText("⚡", cx, gy - 44); }
     ctx.restore();
   }
 
@@ -576,7 +638,7 @@ export class Renderer {
     ctx.save();
     ctx.globalAlpha = 0.5 + 0.5 * Math.sin(engine.elapsed / 80);
     ctx.fillStyle = "#ffe14a";
-    ctx.font = "900 44px sans-serif";
+    ctx.font = "900 44px" + FONT;
     ctx.textAlign = "center";
     ctx.fillText("✦ HIT!", LOGICAL_W / 2, OPP_BASE - 150);
     ctx.restore();
@@ -626,8 +688,8 @@ export class Renderer {
   }
 
   drawPlayerFull(player, t) {
-    this.drawPlayerTail(player, t);
     this.drawPlayerBody(player, t);
+    this.drawPlayerTail(player, t);
   }
 
   // Ported from Egg Time's drawCockBack — armless rooster seen from behind;
@@ -639,19 +701,23 @@ export class Renderer {
     ctx.translate(cx, baseY - lunge * 10);
     ctx.scale(s, s);
     if (part !== "body") {
-      const tailCols = ["#13403a", "#1f6e60", "#2e8f7d", "#39ad97"];
-      for (let i = -4; i <= 4; i++) {
+      // big, full sickle TAIL — the closest thing to the camera, fanned WIDE
+      const tailCols = ["#0e3a34", "#13403a", "#1f6e60", "#2e8f7d", "#39ad97", "#52c9b1"];
+      for (let i = -6; i <= 6; i++) {
         ctx.strokeStyle = tailCols[Math.abs(i) % tailCols.length];
-        ctx.lineWidth = 11 - Math.abs(i) * 1.1;
+        ctx.lineWidth = 14 - Math.abs(i) * 1.0;
         ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.moveTo(i * 7, -44);
-        ctx.quadraticCurveTo(i * 26, -132, i * 30, -150 - Math.abs(i) * 8);
+        ctx.moveTo(i * 7, -40);
+        ctx.quadraticCurveTo(i * 30, -150, i * 34, -176 - Math.abs(i) * 9);
         ctx.stroke();
       }
-      ctx.strokeStyle = "#9af0dd"; ctx.lineWidth = 4; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(-4, -44); ctx.quadraticCurveTo(-34, -150, -22, -198); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(4, -44); ctx.quadraticCurveTo(34, -150, 22, -198); ctx.stroke();
+      // glossy iridescent top sickle feathers curling back
+      ctx.strokeStyle = "#9af0dd"; ctx.lineWidth = 5; ctx.lineCap = "round";
+      for (const sgn of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(sgn * 4, -42); ctx.quadraticCurveTo(sgn * 40, -160, sgn * 26, -224); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sgn * 12, -44); ctx.quadraticCurveTo(sgn * 60, -150, sgn * 50, -210); ctx.stroke();
+      }
     }
     if (part === "tail") { ctx.restore(); return; }
     // body hump (cream)
@@ -666,10 +732,22 @@ export class Renderer {
     }
     // saddle feathers
     ctx.fillStyle = "#e0a93f";
-    ctx.beginPath(); ctx.ellipse(0, -58, 30, 16, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -58, 34, 18, 0, 0, Math.PI * 2); ctx.fill();
     // neck + head rising toward the opponent
     ctx.strokeStyle = "#efe9d8"; ctx.lineWidth = 26; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(0, -64); ctx.lineTo(0, -92 - rise); ctx.stroke();
+    // golden HACKLE / cape feathers fanning around the neck (pointed plumes)
+    const hackBase = -60;
+    for (let i = -3; i <= 3; i++) {
+      const tip = -96 - rise + Math.abs(i) * 4;
+      ctx.fillStyle = i % 2 ? "#e8b34a" : "#caa036";
+      ctx.beginPath();
+      ctx.moveTo(i * 6 - 5, hackBase);
+      ctx.quadraticCurveTo(i * 12, (hackBase + tip) / 2, i * 7, tip);
+      ctx.quadraticCurveTo(i * 12 + 4, (hackBase + tip) / 2, i * 6 + 5, hackBase);
+      ctx.closePath();
+      ctx.fill();
+    }
     const hy = -104 - rise;
     ctx.fillStyle = "#efe9d8";
     ctx.beginPath(); ctx.arc(0, hy, 16, 0, Math.PI * 2); ctx.fill();
@@ -684,44 +762,67 @@ export class Renderer {
     ctx.restore();
   }
 
-  // ---- Referee fox (during the count) ----
+  // ---- Referee: a little chick (Egg Time coop chick) waving its wing ----
   drawReferee(engine) {
     if (engine.countTimer <= 0) return;
     const ctx = this.ctx;
     const overPlayer = engine.countingPlayer;
-    const x = LOGICAL_W / 2 + 130;
-    const y = overPlayer ? LOGICAL_H - 250 : OPP_BASE - 40;
+    const x = LOGICAL_W / 2 + 120;
+    const y = overPlayer ? LOGICAL_H - 250 : OPP_BASE + 10;
+    const t = engine.elapsed;
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = "#e07b2a";
-    ctx.beginPath(); ctx.ellipse(0, 0, 34, 50, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.stroke();
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(-30, -20, 8, 60); ctx.fillRect(-8, -20, 8, 60); ctx.fillRect(14, -20, 8, 60);
-    ctx.fillStyle = "#e07b2a";
-    ctx.beginPath(); ctx.arc(0, -64, 26, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.stroke();
-    ctx.fillStyle = "#e07b2a";
-    ctx.beginPath();
-    ctx.moveTo(-22, -80); ctx.lineTo(-30, -104); ctx.lineTo(-8, -86); ctx.closePath();
-    ctx.moveTo(22, -80); ctx.lineTo(30, -104); ctx.lineTo(8, -86); ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.moveTo(0, -60); ctx.lineTo(26, -56); ctx.lineTo(0, -50); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#111";
-    ctx.beginPath(); ctx.arc(26, -56, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(-8, -68, 3, 0, Math.PI * 2); ctx.arc(8, -68, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.scale(7, 7);                          // chick art is tiny — scale it up
+    ctx.translate(0, Math.sin(t / 250) * 1.2);
+    // shadow
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.beginPath(); ctx.ellipse(0, 0, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    // legs
+    ctx.fillStyle = "#e8a13a"; ctx.fillRect(-2, -3, 1.6, 3); ctx.fillRect(0.4, -3, 1.6, 3);
+    // body + head
+    ctx.fillStyle = "#ffe05a";
+    ctx.beginPath(); ctx.ellipse(0, -7, 6, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -13, 4.5, 0, Math.PI * 2); ctx.fill();
+    // counting wing, raised
+    ctx.save();
+    ctx.translate(5, -8);
+    ctx.rotate(-0.6 - Math.abs(Math.sin(t / 180)) * 0.5);
+    ctx.fillStyle = "#ffd24a";
+    ctx.beginPath(); ctx.ellipse(0, -3, 2.2, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // beak + eye
+    ctx.fillStyle = "#e8a13a";
+    ctx.beginPath(); ctx.moveTo(4, -13); ctx.lineTo(8, -12); ctx.lineTo(4, -11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#2b2118"; ctx.beginPath(); ctx.arc(1.5, -14, 1, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
 
+    // the big count number
     ctx.save();
     ctx.fillStyle = "#fff";
-    ctx.font = "900 170px sans-serif";
+    ctx.font = "900 170px" + FONT;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.lineWidth = 10; ctx.strokeStyle = "rgba(0,0,0,0.6)";
     const n = String(engine.countValue + 1);
     ctx.strokeText(n, LOGICAL_W / 2, LOGICAL_H / 2);
     ctx.fillText(n, LOGICAL_W / 2, LOGICAL_H / 2);
     ctx.restore();
+  }
+
+  // ---- Blood splattered on the lens (screen space, over the fighters) ----
+  drawLensBlood(engine) {
+    const ctx = this.ctx;
+    for (const l of engine.lens) {
+      const a = Math.max(0, Math.min(1, l.a));
+      ctx.fillStyle = `rgba(122,4,16,${a})`;
+      ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(154,8,16,${a * 0.75})`;
+      ctx.beginPath(); ctx.arc(l.x - l.r * 0.26, l.y - l.r * 0.26, l.r * 0.42, 0, Math.PI * 2); ctx.fill();
+      if (l.drip) {
+        ctx.strokeStyle = `rgba(110,5,14,${a})`;
+        ctx.lineWidth = l.r * 0.5; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x, l.y + l.drip); ctx.stroke();
+      }
+    }
   }
 
   // ---- HUD ----
@@ -759,7 +860,7 @@ export class Renderer {
     if (engine.banner && engine.elapsed < engine.banner.until) {
       ctx.save();
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.font = "900 64px sans-serif";
+      ctx.font = "900 64px" + FONT;
       ctx.lineWidth = 8; ctx.strokeStyle = "#000"; ctx.fillStyle = "#ffd24a";
       const y = LOGICAL_H / 2 - 130;
       ctx.strokeText(engine.banner.text, LOGICAL_W / 2, y);
@@ -794,7 +895,7 @@ export class Renderer {
   _label(x, y, text, align = "left", color = "#fff", size = 14) {
     const ctx = this.ctx;
     ctx.fillStyle = color;
-    ctx.font = `900 ${size}px sans-serif`;
+    ctx.font = `900 ${size}px ${FONT}`;
     ctx.textAlign = align;
     ctx.textBaseline = "bottom";
     ctx.fillText(text, x, y);
