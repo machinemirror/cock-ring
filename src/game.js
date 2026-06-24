@@ -13,20 +13,15 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.2.0";
+const VERSION = "0.2.2";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
     <canvas id="cr-canvas"></canvas>
 
-    <div class="cr-topbar hidden" id="cr-topbar">
-      <button class="cr-iconbtn" id="cr-mute" title="Mute">🔊</button>
-      <button class="cr-iconbtn" id="cr-pause" title="Pause">⏸</button>
-    </div>
-
     <div class="cr-overlay" id="cr-screen-start">
       <h1 class="cr-title">COCK RING</h1>
-      <p class="cr-subtitle">Pecking Order — read the tells, slip the punch, counter hard.</p>
+      <p class="cr-subtitle">Are you a featherweight champion?</p>
       <button class="cr-btn" id="cr-play">FIGHT</button>
       <button class="cr-btn secondary" id="cr-reset">Reset Progress</button>
       <p class="cr-build">beta build ${VERSION}</p>
@@ -48,12 +43,6 @@ const TEMPLATE = `
       </div>
       <button class="cr-btn" id="cr-begin">FIGHT!</button>
       <button class="cr-btn secondary" id="cr-back-select">Back</button>
-    </div>
-
-    <div class="cr-overlay hidden" id="cr-screen-pause">
-      <h2 class="cr-h2">Paused</h2>
-      <button class="cr-btn" id="cr-resume">Resume</button>
-      <button class="cr-btn secondary" id="cr-quit">Leave Fight</button>
     </div>
 
     <div class="cr-overlay hidden" id="cr-screen-result">
@@ -148,7 +137,6 @@ export class Game {
       start: "cr-screen-start",
       select: "cr-screen-select",
       tutorial: "cr-screen-tutorial",
-      pause: "cr-screen-pause",
       result: "cr-screen-result",
     };
     for (const id of Object.values(map)) {
@@ -157,8 +145,6 @@ export class Game {
     const visible = map[screen];
     if (visible) this.root.querySelector("#" + visible).classList.remove("hidden");
 
-    const fighting = screen === "fight" || screen === "pause";
-    this.root.querySelector("#cr-topbar").classList.toggle("hidden", !fighting);
     if (screen === "fight") this.input.enable();
     else this.input.disable();
     if (screen === "select") this._refreshRoster();
@@ -171,14 +157,6 @@ export class Game {
     q("#cr-back-start").onclick = () => this._show("start");
     q("#cr-back-select").onclick = () => this._show("select");
     q("#cr-begin").onclick = () => this._startFight();
-    q("#cr-resume").onclick = () => { this._show("fight"); };
-    q("#cr-quit").onclick = () => { this.engine = null; this._show("select"); };
-    q("#cr-pause").onclick = () => { if (this.screen === "fight") this._show("pause"); };
-    q("#cr-mute").onclick = (e) => {
-      const m = !this.audio.muted;
-      this.audio.setMuted(m);
-      e.currentTarget.textContent = m ? "🔇" : "🔊";
-    };
     q("#cr-result-next").onclick = () => this._afterResult();
     q("#cr-result-select").onclick = () => this._show("select");
   }

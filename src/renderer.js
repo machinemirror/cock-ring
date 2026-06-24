@@ -255,8 +255,9 @@ export class Renderer {
     const s = this._oppScale(cfg);
     const layPose = { lean: 0, drop: 0, armSide: 0, armExtend: 0, expr: pose.ko ? "ko" : "dazed", down: false, ko: false, shake: 0 };
     ctx.save();
-    // lay on the mat: rotate the upright figure onto its back, head toward center
-    ctx.translate(LOGICAL_W * 0.5 + 84, LOGICAL_H * 0.86);
+    // lay on the mat: rotate the upright figure onto its back, slid to the right
+    // by ~half a body length so he sprawls toward the right of the ring.
+    ctx.translate(LOGICAL_W * 0.5 + 84 + 110, LOGICAL_H * 0.86);
     ctx.rotate(-Math.PI / 2);
     this._drawFigure(cfg, 0, 0, s, layPose, woundFrac, engine.elapsed);
     ctx.restore();
@@ -948,12 +949,12 @@ export class Renderer {
     const s = 3.0;
     const cx = LOGICAL_W / 2 + pose.cockX + pose.shake;
     if (pose.down) {
+      // Large Cock flat on his back on the mat at the bottom of the screen.
       const ctx = this.ctx;
       ctx.save();
-      ctx.fillStyle = "#caa14a";
-      ctx.beginPath();
-      ctx.ellipse(LOGICAL_W / 2, LOGICAL_H - 60, 140, 34, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.translate(LOGICAL_W / 2, LOGICAL_H - 36);
+      ctx.rotate(-Math.PI / 2);
+      this._roosterSide(0, 0, 6.0, t / 1000);
       ctx.restore();
       return;
     }
@@ -1224,9 +1225,9 @@ export class Renderer {
     const cfg = engine.cfg;
 
     this._bar(20, 30, 200, 18, player.health / 100, "#6ddf7a", "#2a5a30");
-    this._label(20, 22, "LARGE COCK", "left");
+    this._label(20, 22, "LARGE COCK", "left", "#fff", 16, true);
     this._bar(LOGICAL_W - 220, 30, 200, 18, engine.opp.health / engine.opp.maxHealth, "#ff6a6a", "#5a2a2a");
-    this._label(LOGICAL_W - 20, 22, cfg.name.toUpperCase(), "right");
+    this._label(LOGICAL_W - 20, 22, cfg.name.toUpperCase(), "right", "#fff", 16, true);
 
     for (let i = 0; i < cfg.knockdownsToWin; i++) {
       ctx.fillStyle = i < engine.opp.knockdowns ? "#ffd24a" : "rgba(255,255,255,0.25)";
@@ -1242,8 +1243,8 @@ export class Renderer {
     this._drawEggMeter(player, engine.elapsed);
     this._label(LOGICAL_W / 2, 130, this._fmtTime(engine.fightTime), "center", "rgba(255,255,255,0.7)", 16);
 
-    this._bar(LOGICAL_W / 2 - 120, LOGICAL_H - 188, 240, 14, player.stamina / 100, "#4ab0ff", "#1d3a55");
-    this._label(LOGICAL_W / 2, LOGICAL_H - 202, "PECK POWER", "center", "rgba(255,255,255,0.6)", 12);
+    this._bar(LOGICAL_W / 2 - 120, LOGICAL_H - 30, 240, 14, player.stamina / 100, "#4ab0ff", "#1d3a55");
+    this._label(LOGICAL_W / 2, LOGICAL_H - 34, "PECK POWER", "center", "#fff", 12, true);
 
     if (engine.fxFlash > 0) {
       ctx.fillStyle = `rgba(255,80,80,${engine.fxFlash * 0.35})`;
@@ -1285,12 +1286,18 @@ export class Renderer {
     ctx.fillStyle = fill; ctx.fillRect(x, y, w * frac, h);
   }
 
-  _label(x, y, text, align = "left", color = "#fff", size = 14) {
+  _label(x, y, text, align = "left", color = "#fff", size = 14, stroke = false) {
     const ctx = this.ctx;
-    ctx.fillStyle = color;
     ctx.font = `900 ${size}px ${FONT}`;
     ctx.textAlign = align;
     ctx.textBaseline = "bottom";
+    if (stroke) {
+      ctx.lineWidth = Math.max(3, size * 0.4);
+      ctx.strokeStyle = "rgba(0,0,0,0.8)";
+      ctx.lineJoin = "round";
+      ctx.strokeText(text, x, y);
+    }
+    ctx.fillStyle = color;
     ctx.fillText(text, x, y);
   }
 

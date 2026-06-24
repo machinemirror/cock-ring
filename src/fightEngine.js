@@ -29,6 +29,11 @@ const HURT_MS = 260;
 const WEAKSPOT_MS = 900;     // Tattler/weak-spot opening duration
 const FAKE_PAUSE_MS = 260;   // gap after a feint before the real attack
 
+// Global difficulty easing — longer wind-ups, slower attacks, softer hits.
+const EASE_TELL = 1.35;      // wind-ups last longer → more time to read & weave
+const EASE_IDLE = 1.25;      // longer gaps between attacks
+const EASE_DMG = 0.65;       // the player takes less damage per clean hit
+
 const rand = (lo, hi) => lo + Math.random() * (hi - lo);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
@@ -103,9 +108,9 @@ export class FightEngine {
     // Charge attacks wind up much longer and hit far harder; phase scaling on
     // the final boss tightens timing and bumps damage.
     const phaseSpeed = 1 - (this.opp.phase - 1) * 0.12;
-    const tell = charge
+    const tell = (charge
       ? rand(c.tellMs[1] * 1.4, c.tellMs[1] * 1.8) * phaseSpeed
-      : rand(c.tellMs[0], c.tellMs[1]) * phaseSpeed;
+      : rand(c.tellMs[0], c.tellMs[1]) * phaseSpeed) * EASE_TELL;
     return {
       dir,
       duckable,
@@ -116,7 +121,7 @@ export class FightEngine {
       // Player must dodge AWAY from the incoming hook (a left hook → dodge right),
       // unless duckable. We store the required defensive state.
       requiredDefense: duckable ? "duck" : (dir === "left" ? "dodge-right" : "dodge-left"),
-      damage: (charge ? c.damage * 1.8 : c.damage) + (this.opp.phase - 1) * 2,
+      damage: ((charge ? c.damage * 1.8 : c.damage) + (this.opp.phase - 1) * 2) * EASE_DMG,
     };
   }
 
@@ -137,7 +142,7 @@ export class FightEngine {
     const c = this.cfg;
     const speed = 1 - (this.opp.phase - 1) * 0.15;
     this.opp.state = "idle";
-    this.opp.timer = rand(c.idleDelay[0], c.idleDelay[1]) * speed;
+    this.opp.timer = rand(c.idleDelay[0], c.idleDelay[1]) * speed * EASE_IDLE;
     this.opp.attack = null;
   }
 
@@ -195,7 +200,8 @@ export class FightEngine {
 
   openCounterWindow() {
     this.opp.state = "whiff";
-    this.opp.timer = this.cfg.counterWindowMs;
+    // Generous opening so a clean weave reliably lands a few pecks (Lv2 feel).
+    this.opp.timer = this.cfg.counterWindowMs + 320;
     // Slipping a punch also briefly exposes a weak-spot opponent's soft spot.
     if (this.cfg.weakSpot) this.weakSpotTimer = WEAKSPOT_MS;
   }
@@ -220,7 +226,7 @@ export class FightEngine {
     if (this.peckCd > 0) return;          // no mashing through an opening
     const factor = this.player.peck(side);
     if (factor === 0) return;             // out of stamina
-    this.peckCd = 170;
+    this.peckCd = 150;
     this.audio.peck();
 
     const s = this.opp.state;
@@ -229,7 +235,7 @@ export class FightEngine {
     if (s === "whiff") {
       this.audio.counter();
       this.player.addEgg(24);
-      this.damageOpponent(Math.round((this.cfg.damage * 1.4 + 5) * factor), true);
+      this.damageOpponent(Math.round((this.cfg.damage * 1.6 + 7) * factor), true);
       return;
     }
 
