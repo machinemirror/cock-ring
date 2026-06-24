@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -104,8 +104,8 @@ export class Game {
     this.renderer = new Renderer(this.ctx);
 
     this.input = new InputHandler(this.canvas, {
-      onDodge: (dir) => this._act(() => this.player.dodge(dir) && this.audio.dodge()),
-      onDuck: () => this._act(() => this.player.duck()),
+      onDodge: (dir) => this._act(() => this.engine && this.engine.playerDodge(dir)),
+      onDuck: () => this._act(() => this.engine && this.engine.playerDuck()),
       onPeck: (side) => this._act(() => this.engine && this.engine.playerPeck(side)),
       onSpecial: () => this._act(() => this.engine && this.engine.playerSpecial()),
     });

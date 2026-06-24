@@ -47,9 +47,11 @@ export class FightEngine {
       state: "intro",
       timer: 900,
       attack: null,        // current attack descriptor
+      committed: false,    // Lv2-style: one dodge attempt per jab
       lastHurt: 0,         // ms since hurt flash, for renderer
       shakeUntil: 0,
     };
+    this.peckCd = 0;         // rate-limit pecks during an opening (no mashing)
 
     this.comboLeft = 0;
     this.weakSpotTimer = 0;  // >0 while a weak-spot opening is active
@@ -126,6 +128,7 @@ export class FightEngine {
     this.comboLeft = c.comboLength > 1 ? c.comboLength : 1;
     this.opp.attack = this.buildAttack({ fake: wantFake && !wantCharge, charge: wantCharge });
     this.opp.state = "tell";
+    this.opp.committed = false;              // fresh jab — one weave allowed
     this.opp.timer = this.opp.attack.tellMs; // drive the wind-up countdown
     if (this.opp.attack.charge) this.setBanner("CHARGE!", 700);
   }
@@ -154,13 +157,39 @@ export class FightEngine {
       return;
     }
 
-    const evaded = this.player.isDefending() && this.player.state === a.requiredDefense;
-    if (evaded) {
+    // A successful weave already moved us out of "tell" (see _tryEvade); reaching
+    // here means the player mis-read or never committed — the punch lands.
+    this.landHitOnPlayer(a);
+  }
+
+  // -------------------------------------------------------------------------
+  // Player defense — Lv2 cock-fight style: you COMMIT a weave on the first
+  // input of a jab. Weave to the safe side and he whiffs (opening you can peck);
+  // pick wrong (or duck a hook) and you eat it — no second chance this jab.
+  // -------------------------------------------------------------------------
+  playerDodge(dir) {
+    if (this.result || !this.player.canAct()) return;
+    this.player.dodge(dir);
+    this._tryEvade(dir === "left" ? "dodge-left" : "dodge-right");
+  }
+
+  playerDuck() {
+    if (this.result || !this.player.canAct()) return;
+    this.player.duck();
+    this._tryEvade("duck");
+  }
+
+  _tryEvade(defense) {
+    const o = this.opp;
+    if (o.state !== "tell") return;      // only a live wind-up can be weaved
+    if (o.committed) return;             // one attempt per jab
+    o.committed = true;
+    if (o.attack && defense === o.attack.requiredDefense) {
       this.audio.dodge();
       this.event("evade");
-      this.openCounterWindow();
+      this.openCounterWindow();          // he's open — peck him now
     } else {
-      this.landHitOnPlayer(a);
+      this.audio.block();                // wrong read — the punch will land
     }
   }
 
@@ -188,47 +217,36 @@ export class FightEngine {
   playerPeck(side) {
     if (this.result) return;
     if (!this.player.canAct()) return;
+    if (this.peckCd > 0) return;          // no mashing through an opening
     const factor = this.player.peck(side);
-    if (factor === 0) return; // no stamina / blocked by own state
+    if (factor === 0) return;             // out of stamina
+    this.peckCd = 170;
     this.audio.peck();
 
     const s = this.opp.state;
 
+    // He's OPEN — beak him in the face (the only place a peck deals damage).
     if (s === "whiff") {
-      // Counter! Big damage + builds the Golden Egg meter.
       this.audio.counter();
-      this.player.addEgg(28);
-      const dmg = Math.round((this.cfg.damage * 1.6 + 6) * factor);
-      this.damageOpponent(dmg, true);
+      this.player.addEgg(24);
+      this.damageOpponent(Math.round((this.cfg.damage * 1.4 + 5) * factor), true);
       return;
     }
 
-    if (s === "idle" || s === "recover" || s === "feint") {
-      if (this.cfg.weakSpot && !this.weakSpotActive) {
-        this.audio.block();          // armored — jabs bounce off
-        this.event("blocked");
-        return;
-      }
-      const base = this.weakSpotActive ? this.cfg.damage * 1.5 + 6 : 5;
-      this.damageOpponent(Math.round(base * factor), false);
-      if (this.weakSpotActive) this.player.addEgg(10);
-      return;
-    }
-
+    // Pecking during a wind-up is a gamble.
     if (s === "tell") {
-      // Pecking mid-tell is risky.
       if (this.cfg.charge && this.opp.attack && this.opp.attack.charge &&
           this.opp.attack.tellLeft < this.opp.attack.tellMs * 0.4) {
         // Precise interrupt of a charge: huge counter, cancels the attack.
         this.audio.counter();
-        this.player.addEgg(35);
+        this.player.addEgg(32);
         this.damageOpponent(Math.round((this.cfg.damage * 2 + 8) * factor), true);
         this.scheduleIdle();
         this.setBanner("PERFECT!", 800);
         return;
       }
       if (this.cfg.punishesMashing) {
-        // Snitch / Todd punish the over-eager: convert their tell into a hit.
+        // Snitch / Todd punish the over-eager: the jab they were winding lands.
         this.audio.hit();
         this.fxFlash = 0.8;
         const outcome = this.player.takeDamage(Math.round(this.cfg.damage * 0.8));
@@ -242,7 +260,7 @@ export class FightEngine {
       return;
     }
 
-    // strike / hurt / down / count — peck has no effect.
+    // idle / recover / strike / hurt — a wasted jab, no damage.
     this.audio.block();
   }
 
@@ -301,6 +319,7 @@ export class FightEngine {
   update(dt) {
     this.elapsed += dt;
     if (this.fxFlash > 0) this.fxFlash = Math.max(0, this.fxFlash - dt / 220);
+    if (this.peckCd > 0) this.peckCd = Math.max(0, this.peckCd - dt);
     if (this.weakSpotTimer > 0) this.weakSpotTimer -= dt;
     if (this.lens.length) {
       for (const l of this.lens) l.a -= dt / 4000;
@@ -351,7 +370,7 @@ export class FightEngine {
         break;
 
       case "feint":
-        if (o.timer <= 0) { o.state = "tell"; o.timer = o.attack.tellMs; o.attack.tellLeft = o.attack.tellMs; }
+        if (o.timer <= 0) { o.state = "tell"; o.committed = false; o.timer = o.attack.tellMs; o.attack.tellLeft = o.attack.tellMs; }
         break;
 
       case "strike":
@@ -376,9 +395,10 @@ export class FightEngine {
     this.opp.state = "recover";
     this.comboLeft -= 1;
     if (this.comboLeft > 0) {
-      // Continue a combo string after a short beat.
+      // Continue a combo string after a short beat — fresh weave allowed.
       this.opp.attack = this.buildAttack();
       this.opp.state = "tell";
+      this.opp.committed = false;
       this.opp.timer = this.opp.attack.tellMs;
     } else {
       this.scheduleIdle();
