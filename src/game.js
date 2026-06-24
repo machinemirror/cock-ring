@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.2.3";
+const VERSION = "0.2.4";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -264,7 +264,7 @@ export class Game {
       nextBtn.textContent = last ? "Take a Bow" : "Next Fight";
     } else {
       titleEl.textContent = "DOWN!";
-      textEl.textContent = `${cfg.name} put ${FIGHTER_NAME} on the mat. Shake it off and run it back.`;
+      textEl.textContent = `${cfg.name} laid your ${FIGHTER_NAME} out on the mat...`;
       nextBtn.textContent = "Rematch";
     }
     this.engine = null;

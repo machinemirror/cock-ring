@@ -1,156 +1,112 @@
 # 🥊 Cock Ring
 
 A mobile-first, **HTML5 Canvas** boxing game. You play **Large Cock**, a rooster
-boxer fighting his way through the **Pecking Order** — read each opponent's
-tells, slip their punches, manage your stamina, charge the **Golden Egg** meter,
-and knock them all out.
+fighting his way up the **Pecking Order** — read each opponent's wind-up, weave
+to the safe side, then peck him open. *Are you a featherweight champion?*
 
-The fight feel is inspired by classic reflex/pattern-recognition boxing
-boss-rush games, but **everything here is original**: original code, original
-characters, original canvas-drawn art, and original synthesized audio. No
-third-party sprites, music, ROM data, or copyrighted assets are used.
+**▶ Play:** <https://machinemirror.github.io/cock-ring/>
 
----
+The fight feel is inspired by classic reflex/pattern-recognition boxing games,
+but **everything here is original or the author's own work**: original code, the
+author's own **Egg Time** character art (redrawn in a ring-boxing presentation),
+canvas-drawn visuals, and synthesized audio. No third-party sprites, music, ROM
+data, or copyrighted assets are used.
 
 ## What it is
 
-- One-on-one reflex fights against **8 opponents**, each teaching a distinct mechanic.
+- One-on-one reflex fights against **8 opponents** — the Egg Time cast.
 - Pure **vanilla HTML/CSS/JS**, ES modules, **no build step**.
 - **Canvas rendering** — every character is drawn with shapes; no image files.
 - Synthesized sound via the **Web Audio API** — no audio files.
-- **localStorage** save system: unlocks, defeats, best times, win/loss record.
+- **localStorage** save: unlocks, defeats, best times, win/loss record.
 - Designed to drop into the existing **Egg Time** game later as a module.
 
-## How to run locally
+## How a fight works (Egg Time Lv2 "cock fight" style)
 
-Because the game uses ES modules, you need to serve the folder over HTTP
-(opening `index.html` via `file://` will be blocked by the browser). Any static
-server works:
-
-```bash
-# Python (any 3.x)
-python3 -m http.server 8000
-
-# or Node
-npx serve .
-```
-
-Then open <http://localhost:8000> and play. Portrait orientation is preferred;
-it scales responsively to any screen.
-
-## How to publish with GitHub Pages
-
-1. Push this repo to GitHub (public).
-2. Go to **Settings → Pages**.
-3. Under **Build and deployment**, set **Source = Deploy from a branch**.
-4. Choose branch **`main`** and folder **`/ (root)`**, then **Save**.
-5. Wait a minute; your game is live at
-   `https://<your-username>.github.io/cock-ring/`.
-
-No build step or workflow is required — it's all static files.
+When an opponent winds up, an arrow shows which way to slip. You get **one weave
+per jab**: dodge the correct way and he **whiffs open** — peck him in the face
+(his eyes get beaked out as the damage piles up). Pick the wrong side, duck a
+hook, or freeze, and you eat the punch. Pecks only land while he's open, and
+they're rate-limited, so time them. Fill the **Golden Egg** meter with clean
+counters for a screen-clearing special. Drop him enough to win; get knocked down
+three times and you lose — the **chick referee** counts you both out.
 
 ## Controls
 
 **Mobile**
-- Tap **left side** of the screen → left peck
-- Tap **right side** of the screen → right peck
-- Swipe **left** → dodge left
-- Swipe **right** → dodge right
+- Tap **left / right** side → peck left / right
+- Swipe **left / right** → weave left / right
 - Swipe **down** → duck / block
-- Tap the **Golden Egg meter** (center-top) → special attack (when charged)
+- Tap the **Golden Egg meter** (center-top) → special (when charged)
 
 **Desktop**
-- `A` / `←` → dodge left
-- `D` / `→` → dodge right
-- `S` / `↓` → duck / block
-- `J` → left peck
-- `K` → right peck
-- `Space` → Golden Egg special
+- `A` / `←` weave left · `D` / `→` weave right · `S` / `↓` duck
+- `J` peck left · `K` peck right · `Space` Golden Egg special
 
-### How a fight works
+## The Pecking Order (opponents)
 
-When an opponent winds up, an arrow shows which way to slip (or to duck). Dodge
-at the right moment and they **whiff**, opening a **counter window** — peck then
-for big damage and to build your Golden Egg meter. Pecking carelessly costs
-stamina (and some opponents punish it). Fill the meter for a screen-clearing
-special. Drop an opponent enough times to win; get dropped three times and you
-lose.
+| #  | Opponent       | Egg Time art          | Teaches                                   |
+| -- | -------------- | --------------------- | ----------------------------------------- |
+| 1  | **Rat**        | suited narc           | Tutorial — weaving and pecking            |
+| 2  | **Fink**       | suited narc           | Reading left/right wind-ups               |
+| 3  | **Narc**       | suited narc           | Combo strings; don't panic-weave          |
+| 4  | **Snitch**     | suited narc           | Patience — punishes premature pecks        |
+| 5  | **Tattler**    | big narc              | Waiting for the opening                    |
+| 6  | **GBS Agent**  | Lv6 riot trooper      | Fake wind-ups — real vs. bluff            |
+| 7  | **GBS Leader** | Lv7 fat officer       | Precise timing to counter a charge        |
+| 8  | **Todd**       | shirtless brawler     | Final boss — everything, multiple phases  |
 
-## Opponent lineup (Pecking Order)
+Supporting cast: a dense crowd of **hens and pigs**, a little **chick** referee,
+and **Coach Hamhock** the **pig** corner-man.
 
-| #  | Opponent     | Teaches                                              |
-| -- | ------------ | --------------------------------------------------- |
-| 1  | **Rat**      | Tutorial — basic dodging and countering             |
-| 2  | **Fink**     | Reading clear left/right attack tells               |
-| 3  | **Narc**     | Stamina management vs. fast combo strings           |
-| 4  | **Snitch**   | Patience — punishes button-mashing                  |
-| 5  | **Tattler**  | Waiting for a brief weak-spot opening               |
-| 6  | **GBS Agent**| Telling real attacks from fake tells                |
-| 7  | **GBS Leader** | Precise timing to counter a devastating charge    |
-| 8  | **Todd**     | Final boss — every mechanic, multiple phases        |
+## Run locally
 
-Supporting cast: a clustered crowd of **hens**, a little **chick** referee who
-counts knockdowns, and **Coach Hamhock**, the **pig** corner-man who gives a tip
-before each fight. Characters are drawn in the style of the Egg Time cast.
+ES modules need to be served over HTTP (not `file://`):
 
-## Future Egg Time integration
-
-The game mounts its entire UI into a single container, so it can be embedded
-anywhere. It exposes a small public API on `window.CockRing`:
-
-```js
-window.CockRing = {
-  start(options),   // mount and run
-  stop(),           // unmount + fire onExit
-  resetProgress(),  // wipe the save
-  getProgress(),    // read the save object
-};
+```bash
+python3 -m http.server 8000   # then open http://localhost:8000
 ```
 
-`start(options)` accepts:
+## Publish (GitHub Pages)
+
+Push to `main`; in **Settings → Pages** set **Deploy from a branch → main /
+(root)**. It's all static files — no build or workflow. A per-load cache-busting
+token (`?v=Date.now()`) makes new builds appear immediately, even though Pages
+caches for 10 minutes.
+
+## Embedding in Egg Time
+
+The game mounts its whole UI into one container and exposes:
 
 ```js
-CockRing.start({
-  containerId: "my-host-element", // defaults to "app"
-  startOpponent: "rat",           // optional: jump straight into a fight
-  onWin:  ({ opponent, timeMs }) => {},
-  onLose: ({ opponent }) => {},
-  onExit: () => {},
-});
+window.CockRing = { start(options), stop(), resetProgress(), getProgress() };
+CockRing.start({ containerId: "app", startOpponent: "rat",
+                 onWin: ({opponent, timeMs})=>{}, onLose: ({opponent})=>{}, onExit: ()=>{} });
 ```
 
-To embed inside Egg Time, set `window.COCK_RING_NO_AUTOSTART = true` before
-loading `src/main.js`, then call `CockRing.start({ containerId, ... })` from the
-host. The fight engine, renderer, player, opponents and progression are all
-separate ES modules under `src/`, so individual pieces can be reused too.
+Set `window.COCK_RING_NO_AUTOSTART = true` before loading `src/main.js`, then call
+`CockRing.start({ containerId, ... })` from the host.
 
-## Project structure
+## Project layout
 
 ```txt
 cock-ring/
-  index.html        # mount point + module entry
-  style.css         # mobile-first layout, overlays, HUD chrome
-  README.md
-  LICENSE           # MIT
+  index.html        mount point + cache-busting bootstrap
+  style.css         overlays, level menu, HUD chrome
+  README.md  CLAUDE.md  LICENSE (MIT)
   src/
-    main.js         # window.CockRing API + standalone auto-start
-    game.js         # UI build, screens, loop, input wiring
-    input.js        # touch/swipe + keyboard → game intents
-    renderer.js     # all canvas drawing (arena, fighters, HUD)
-    fightEngine.js  # the fight state machine (documented at top of file)
-    player.js       # player state, stamina, egg meter
-    opponents.js    # opponent config data (the roster)
-    audio.js        # Web Audio synthesized sound
-    progression.js  # localStorage save system
+    main.js  game.js  input.js  renderer.js
+    fightEngine.js  player.js  opponents.js  audio.js  progression.js
 ```
+
+See **CLAUDE.md** for architecture, cache-busting/versioning, the deploy flow,
+the headless test approach, and the asset/IP rules.
 
 ## Legal
 
-All code and assets in this repository are **original work**. This game is **not
-affiliated with, endorsed by, or derived from** Nintendo or any other company,
-and contains **no** Nintendo (or other third-party) names, sprites, music, ROM
-code, reverse-engineered code, or copyrighted assets. Character and mechanic
-"inspirations" noted in the code are creative homages only; the implementation
-is independent and original.
-
-Licensed under the [MIT License](LICENSE).
+All code and assets here are **original** or the author's **own** work, drawn
+with canvas primitives. This game is **not affiliated with, endorsed by, or
+derived from** Nintendo or any other company, and contains **no** third-party
+sprites, music, ROM code, reverse-engineered code, or other copyrighted assets.
+Genre/mechanic "inspirations" are creative homage only; the implementation is
+independent. Licensed under the [MIT License](LICENSE).
