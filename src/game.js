@@ -11,6 +11,7 @@ import { Progression } from "./progression.js";
 import { OPPONENTS, opponentById } from "./opponents.js";
 
 const FIGHTER_NAME = "Large Cock";
+const VERSION = "0.1.0";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -26,7 +27,7 @@ const TEMPLATE = `
       <p class="cr-subtitle">Cock Ring Circuit — read the tells, slip the punch, counter hard.</p>
       <button class="cr-btn" id="cr-play">FIGHT</button>
       <button class="cr-btn secondary" id="cr-reset">Reset Progress</button>
-      <p class="cr-legal">100% original code, characters, art and audio. Not affiliated with or derived from any commercial boxing game or its assets.</p>
+      <p class="cr-build">beta build ${VERSION}</p>
     </div>
 
     <div class="cr-overlay hidden" id="cr-screen-select">
