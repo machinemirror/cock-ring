@@ -39,7 +39,7 @@ const TEMPLATE = `
     <div class="cr-overlay hidden" id="cr-screen-tutorial">
       <h2 class="cr-h2" id="cr-tut-name">Rat</h2>
       <div class="cr-coach">
-        <span style="font-size:34px">🐷</span>
+        <canvas id="cr-coach-canvas" width="72" height="72"></canvas>
         <div><span class="who">Coach Hamhock:</span> <span id="cr-tut-tip"></span></div>
       </div>
       <p class="cr-text" id="cr-controls"></p>
@@ -229,7 +229,19 @@ export class Game {
     this.root.querySelector("#cr-tut-name").textContent = `Next up: ${cfg.name}`;
     this.root.querySelector("#cr-tut-tip").textContent = cfg.coachTip;
     this.root.querySelector("#cr-controls").textContent = CONTROLS_TEXT;
+    this._drawCoach();
     this._show("tutorial");
+  }
+
+  // Draw Coach Hamhock (Egg Time pig) into the tutorial bubble's mini-canvas.
+  _drawCoach() {
+    const cc = this.root.querySelector("#cr-coach-canvas");
+    if (!cc) return;
+    const cx2 = cc.getContext("2d");
+    cx2.clearRect(0, 0, cc.width, cc.height);
+    if (!this._coachR) this._coachR = new Renderer(cx2);
+    this._coachR.ctx = cx2;
+    this._coachR.drawCoachPig(26, 60, 1.25, 0);
   }
 
   _startFight() {
@@ -324,14 +336,23 @@ export class Game {
     this.renderer.drawArena(t, excite);
 
     if (inFight) {
-      // We're behind Large Cock: opponent first, then his body, then his big
-      // tail feathers IN FRONT (closest to camera), then blood on the lens.
-      this.renderer.drawOpponent(this.engine);
-      this.renderer.drawPlayerBody(this.player, this.engine.elapsed);
-      this.renderer.drawPlayerTail(this.player, this.engine.elapsed);
-      this.renderer.drawLensBlood(this.engine);
-      this.renderer.drawReferee(this.engine);
-      this.renderer.drawHud(this.engine, this.player);
+      const e = this.engine;
+      // Is the opponent down for the count? Then Large Cock steps to the corner.
+      const oppDown = e.countTimer > 0
+        ? !e.countingPlayer
+        : (e.opp.state === "down" || e.opp.state === "getup" || e.opp.state === "ko");
+      this.renderer.drawOpponent(e);
+      if (oppDown) {
+        // Side profile in the left corner while the chick counts.
+        this.renderer.drawPlayerCorner(this.player, e.elapsed);
+      } else {
+        // We're behind Large Cock: body, then his big tail feathers IN FRONT.
+        this.renderer.drawPlayerBody(this.player, e.elapsed);
+        this.renderer.drawPlayerTail(this.player, e.elapsed);
+      }
+      this.renderer.drawLensBlood(e);
+      this.renderer.drawReferee(e);
+      this.renderer.drawHud(e, this.player);
     } else {
       // Idle showcase rooster behind menus.
       this.renderer.drawPlayerFull(this.player, t);

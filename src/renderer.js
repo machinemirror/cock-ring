@@ -9,8 +9,10 @@
 export const LOGICAL_W = 540;
 export const LOGICAL_H = 960;
 
-const FLOOR_Y = LOGICAL_H * 0.66;  // ring mat line (raised — ring sits high on screen)
-const OPP_BASE = LOGICAL_H * 0.62; // opponent waist baseline
+const FLOOR_Y = LOGICAL_H * 0.72;  // ring mat line
+const POST_H = 250;                // corner-post / rope height (taller ring)
+const RING_TOP = FLOOR_Y - POST_H; // top of the ropes — crowd fills down to here
+const OPP_BASE = LOGICAL_H * 0.64; // opponent waist baseline
 const FONT = "'Courier New', Courier, monospace"; // everything is courier
 
 export class Renderer {
@@ -20,24 +22,30 @@ export class Renderer {
   }
 
   _makeCrowd() {
-    // A packed, OVERLAPPING wall of hens (Egg Time hen style). Drawn back rows
-    // first so front rows overlap them. Jittered x so they cluster, not a grid.
-    const hens = [];
-    const rows = 4;
+    // A DENSE, overlapping wall of hens (and the odd front-facing pig) filling
+    // the whole stand from the top down to the ropes. Back rows are smaller and
+    // drawn first, so each row overlaps the one behind it.
+    const crowd = [];
+    const rows = 13;
     for (let row = 0; row < rows; row++) {
-      const count = 12 + row * 2;
+      const frac = row / (rows - 1);
+      const y = 10 + frac * (RING_TOP - 18);
+      const r = 11 + frac * 13;                 // perspective: bigger toward front
+      const count = Math.max(8, Math.round(LOGICAL_W / (r * 1.05))); // overlap
       for (let i = 0; i < count; i++) {
-        const jitter = (Math.random() - 0.5) * (0.7 / count);
-        hens.push({
+        const jitter = (Math.random() - 0.5) * (0.9 / count);
+        crowd.push({
           x: (i + 0.5) / count + jitter,
-          row,
+          y,
+          r,
+          kind: Math.random() < 0.18 ? "pig" : "hen",
           phase: Math.random() * Math.PI * 2,
           blink: Math.random() * 4,
-          tint: 0.86 + Math.random() * 0.14, // slight brightness variation
+          tint: 0.84 + Math.random() * 0.16,
         });
       }
     }
-    return hens;
+    return crowd;
   }
 
   // ---- Arena: spotlit ring (Egg Time fight-ring style) + hen crowd ----
@@ -64,17 +72,17 @@ export class Renderer {
       ctx.closePath();
       ctx.fill();
     }
-    // posts + ropes sit low so the fighters stand in front
+    // tall corner posts + ropes; fighters stand in front of them
     for (const px of [16, LOGICAL_W - 16]) {
       ctx.fillStyle = "#b22";
-      ctx.fillRect(px - 7, FLOOR_Y - 150, 14, 150);
+      ctx.fillRect(px - 8, RING_TOP, 16, POST_H);
       ctx.fillStyle = "#ffd24a";
-      ctx.fillRect(px - 8, FLOOR_Y - 150, 16, 10);
+      ctx.fillRect(px - 10, RING_TOP, 20, 12);
     }
     ctx.strokeStyle = "#e23b6e";
-    ctx.lineWidth = 6;
-    for (let i = 0; i < 3; i++) {
-      const ry = FLOOR_Y - 18 - i * 40;
+    ctx.lineWidth = 7;
+    for (let i = 0; i < 4; i++) {
+      const ry = RING_TOP + 14 + i * ((POST_H - 28) / 3);
       ctx.beginPath();
       ctx.moveTo(16, ry);
       ctx.lineTo(LOGICAL_W - 16, ry);
@@ -83,17 +91,51 @@ export class Renderer {
   }
 
   _drawCrowd(t, excite) {
-    // dim band behind the crowd so the white hens pop
+    // dark stand behind the crowd, all the way down to the ropes
     const ctx = this.ctx;
     ctx.fillStyle = "#140d28";
-    ctx.fillRect(0, 0, LOGICAL_W, 200);
+    ctx.fillRect(0, 0, LOGICAL_W, RING_TOP);
     for (const h of this.crowd) {
       const x = 8 + h.x * (LOGICAL_W - 16);
-      const baseY = 70 + h.row * 30;          // tightly packed rows → overlap
-      const bob = Math.sin(t / 340 + h.phase) * (2 + excite * 6);
-      const r = 20 - h.row * 1.5;             // back rows smaller (perspective)
-      const flap = excite > 0.4 && Math.sin(t / 100 + h.phase) > 0.3;
-      this._henSmall(x, baseY - bob, r, t, h, flap);
+      const bob = Math.sin(t / 340 + h.phase) * (1.5 + excite * 5);
+      const y = h.y - bob;
+      if (h.kind === "pig") {
+        this._pigSmall(x, y, h.r, t, h);
+      } else {
+        const flap = excite > 0.4 && Math.sin(t / 100 + h.phase) > 0.3;
+        this._henSmall(x, y, h.r, t, h, flap);
+      }
+    }
+  }
+
+  // Front-facing pig in the crowd: round pink head, ears, snout, beady eyes.
+  _pigSmall(x, y, r, t, h) {
+    const ctx = this.ctx;
+    const pink = `rgba(242,168,184,${h.tint})`;
+    // ears (behind head)
+    ctx.fillStyle = "#e58aa0";
+    for (const sgn of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(x + sgn * r * 0.5, y - r * 0.7);
+      ctx.lineTo(x + sgn * r * 0.95, y - r * 1.15);
+      ctx.lineTo(x + sgn * r * 0.95, y - r * 0.55);
+      ctx.closePath(); ctx.fill();
+    }
+    // head
+    ctx.fillStyle = pink;
+    ctx.beginPath(); ctx.arc(x, y, r * 0.95, 0, Math.PI * 2); ctx.fill();
+    // snout
+    ctx.fillStyle = "#e58aa0";
+    ctx.beginPath(); ctx.ellipse(x, y + r * 0.25, r * 0.42, r * 0.32, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#b05a72";
+    ctx.beginPath(); ctx.arc(x - r * 0.16, y + r * 0.25, r * 0.08, 0, Math.PI * 2); ctx.arc(x + r * 0.16, y + r * 0.25, r * 0.08, 0, Math.PI * 2); ctx.fill();
+    // eyes
+    const blinkOn = ((t / 1000 + h.blink) % 4) < 0.12;
+    if (!blinkOn) {
+      ctx.fillStyle = "#2b2118";
+      for (const sgn of [-1, 1]) {
+        ctx.beginPath(); ctx.arc(x + sgn * r * 0.34, y - r * 0.18, r * 0.11, 0, Math.PI * 2); ctx.fill();
+      }
     }
   }
 
@@ -901,6 +943,90 @@ export class Renderer {
     this.drawPlayerTail(player, t);
   }
 
+  // When the opponent is down for the count, Large Cock steps to the LEFT
+  // corner and we see him in SIDE PROFILE, gazing up toward ~1–2 o'clock.
+  drawPlayerCorner(player, t) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(100, FLOOR_Y + 6);
+    ctx.rotate(-0.34); // tip his head up toward the 1–2 o'clock line
+    this._roosterSide(0, 0, 5.6, t / 1000);
+    ctx.restore();
+  }
+
+  // Egg Time side-profile rooster (faces right): body, sickle tail curling
+  // back-left, golden hackle, comb, beak. Used for the corner profile.
+  _roosterSide(x, gy, s, t) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(x, gy + Math.sin(t * 3) * 1.6);
+    ctx.scale(s, s);
+    // legs + claws
+    ctx.strokeStyle = "#e8a13a"; ctx.lineWidth = 2.4; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-2, -3); ctx.lineTo(-3, 0); ctx.moveTo(4, -3); ctx.lineTo(5, 0); ctx.stroke();
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-3, 0); ctx.lineTo(-6, 1); ctx.moveTo(-3, 0); ctx.lineTo(-0.5, 1.5);
+    ctx.moveTo(5, 0); ctx.lineTo(2, 1.5); ctx.moveTo(5, 0); ctx.lineTo(8, 1); ctx.stroke();
+    // arched sickle tail (sweeps up, curls back-left)
+    const tailCols = ["#13403a", "#1f6e60", "#2e8f7d"];
+    for (let i = 0; i < 5; i++) {
+      ctx.strokeStyle = tailCols[i % tailCols.length]; ctx.lineWidth = 4.6 - i * 0.5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(-7, -13);
+      ctx.quadraticCurveTo(-20 - i * 3, -20 - i * 4, -13 - i * 4, -36 - i * 6);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#7fe6d3"; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(-7, -13); ctx.quadraticCurveTo(-26, -34, -15, -46); ctx.stroke();
+    // body + puffed chest
+    ctx.fillStyle = "#efe9d8"; ctx.beginPath(); ctx.ellipse(0, -15, 11, 14, -0.16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(5, -12, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+    // golden neck hackle
+    ctx.fillStyle = "#e0a93f";
+    ctx.beginPath(); ctx.moveTo(2, -25); ctx.lineTo(11, -30); ctx.lineTo(9, -19); ctx.lineTo(3, -17); ctx.closePath(); ctx.fill();
+    // head
+    const hx = 9, hy = -32;
+    ctx.fillStyle = "#efe9d8"; ctx.beginPath(); ctx.arc(hx, hy, 6.4, 0, Math.PI * 2); ctx.fill();
+    // comb
+    ctx.fillStyle = "#e23b2e";
+    ctx.beginPath();
+    ctx.arc(hx - 4, hy - 6, 1.8, 0, Math.PI * 2);
+    ctx.arc(hx, hy - 8, 2.2, 0, Math.PI * 2);
+    ctx.arc(hx + 4, hy - 6, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    // wattle
+    ctx.beginPath(); ctx.ellipse(hx + 4, hy + 6, 2, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // beak (points right)
+    ctx.fillStyle = "#e8a13a"; ctx.beginPath();
+    ctx.moveTo(hx + 6, hy - 1); ctx.lineTo(hx + 14, hy + 1); ctx.lineTo(hx + 6, hy + 4); ctx.closePath(); ctx.fill();
+    // eye
+    ctx.fillStyle = "#2b2118"; ctx.beginPath(); ctx.arc(hx + 2, hy - 1, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(hx + 2.6, hy - 1.6, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Egg Time pig (side view) — used for Coach Hamhock in the tutorial bubble.
+  // Draws into THIS renderer's ctx; caller sets up the transform/canvas.
+  drawCoachPig(x, gy, s, t) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(x, gy + Math.sin(t) * 1.5);
+    ctx.scale(s, s);
+    ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(0, 0, 22, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#3a2b22";
+    for (const lx of [-13, -5, 5, 13]) ctx.fillRect(lx - 2, -6, 4, 6);
+    const body = "#f2a8b8";
+    ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(0, -16, 22, 13, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = body; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(-22, -20, 4, -0.6, Math.PI * 1.4); ctx.stroke(); // curly tail
+    ctx.fillStyle = body; ctx.beginPath(); ctx.arc(22, -20, 12, 0, Math.PI * 2); ctx.fill(); // head
+    ctx.beginPath(); ctx.moveTo(20, -30); ctx.lineTo(26, -34); ctx.lineTo(27, -28); ctx.closePath(); ctx.fill(); // ear
+    ctx.fillStyle = "#e58aa0"; ctx.beginPath(); ctx.ellipse(33, -19, 5, 6, 0, 0, Math.PI * 2); ctx.fill(); // snout
+    ctx.fillStyle = "#b05a72"; ctx.fillRect(32, -21, 1.5, 4); ctx.fillRect(34.5, -21, 1.5, 4);
+    ctx.fillStyle = "#2b2118"; ctx.beginPath(); ctx.arc(22, -23, 1.7, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   // Ported from Egg Time's drawCockBack — armless rooster seen from behind;
   // `lunge` (0..1) thrusts the head/beak up to peck. No arms, ever.
   _cock(cx, baseY, s, t, lunge, part) {
@@ -975,13 +1101,12 @@ export class Renderer {
   drawReferee(engine) {
     if (engine.countTimer <= 0) return;
     const ctx = this.ctx;
-    const overPlayer = engine.countingPlayer;
-    const x = LOGICAL_W / 2 + 120;
-    const y = overPlayer ? LOGICAL_H - 250 : OPP_BASE + 10;
+    const x = LOGICAL_W / 2 + 90;
+    const y = FLOOR_Y - 4;                    // standing on the mat
     const t = engine.elapsed;
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(7, 7);                          // chick art is tiny — scale it up
+    ctx.scale(-7, 7);                         // mirrored — faces the other way
     ctx.translate(0, Math.sin(t / 250) * 1.2);
     // shadow
     ctx.fillStyle = "rgba(0,0,0,.18)";
