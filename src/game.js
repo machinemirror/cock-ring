@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.2.5";
+const VERSION = "0.2.6";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
