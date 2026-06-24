@@ -12,6 +12,9 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+/* Form controls don't inherit font-family — force Courier everywhere. */
+button, input, select, textarea { font-family: inherit; }
+
 html, body {
   margin: 0;
   padding: 0;
