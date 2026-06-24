@@ -15,6 +15,9 @@ const RING_TOP = FLOOR_Y - POST_H; // top of the ropes — crowd fills down to h
 const OPP_BASE = LOGICAL_H * 0.64; // opponent waist baseline
 const FONT = "'Courier New', Courier, monospace"; // everything is courier
 
+const lerp = (a, b, p) => a + (b - a) * p;
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
 export class Renderer {
   constructor(ctx) {
     this.ctx = ctx;
@@ -1305,5 +1308,287 @@ export class Renderer {
     const s = Math.floor(ms / 1000);
     const cs = Math.floor((ms % 1000) / 10);
     return `${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+  }
+
+  // ================= Victory → slaughter ending cinematic =================
+  // Three beats, each driven by a 0..1 progress: (0) coronation — Large Cock
+  // crowned Featherweight World Champion amid his hens; (1) the Robot Wife
+  // (ported from Egg Time) marches in and everyone scatters; (2) the Egg Time
+  // slaughter — she takes his head off on the block, blood on the lens.
+
+  resetEndingFx() {
+    this._slayFx = { drops: [], lens: [], spawned: false, born: 0 };
+  }
+
+  drawEndingCoronation(t, prog) {
+    const ctx = this.ctx;
+    this.drawArena(t, 1);
+    const cx = LOGICAL_W / 2, podY = LOGICAL_H * 0.74;
+    // golden glow behind the champ
+    const g = ctx.createRadialGradient(cx, podY - 150, 30, cx, podY - 150, 380);
+    g.addColorStop(0, "rgba(255,210,74,0.55)"); g.addColorStop(1, "rgba(255,210,74,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    this._confetti(t);
+    // a cheering arc of hens across the foreground
+    const hens = 9;
+    for (let i = 0; i < hens; i++) {
+      const f = i / (hens - 1);
+      const hx = lerp(40, LOGICAL_W - 40, f);
+      const jump = Math.abs(Math.sin(t / 200 + i * 1.7)) * 16;
+      this._henSmall(hx, podY + 96 - jump, 22 + (i % 2) * 4, t, { tint: 0.95, blink: i, phase: i }, true);
+    }
+    // podium
+    ctx.fillStyle = "#caa036"; ctx.fillRect(cx - 72, podY, 144, 64);
+    ctx.fillStyle = "#e8b34a"; ctx.fillRect(cx - 72, podY, 144, 10);
+    this._label(cx, podY + 46, "1", "center", "#fff6e6", 36, true);
+    // Large Cock on the podium (proud side profile)
+    ctx.save(); ctx.translate(cx - 6, podY + 6); ctx.rotate(-0.12);
+    this._roosterSide(0, 0, 6.4, t / 1000);
+    ctx.restore();
+    // the trophy beside him
+    this._drawTrophy(cx + 104, podY - 4, 1.6, t);
+    // title banner
+    this._label(cx, 150, "FEATHERWEIGHT", "center", "#ffd24a", 40, true);
+    this._label(cx, 196, "WORLD CHAMPION", "center", "#fff", 40, true);
+    if (((t / 500) | 0) % 2 === 0) this._label(cx, LOGICAL_H - 36, "tap to continue", "center", "rgba(255,255,255,0.75)", 16);
+  }
+
+  drawEndingMarch(t, prog) {
+    const ctx = this.ctx;
+    this.drawArena(t, 0.5);
+    const e = clamp01(prog);
+    // hens flee toward the nearest edge and off-screen
+    const hens = 9;
+    for (let i = 0; i < hens; i++) {
+      const f = i / (hens - 1);
+      const side = f < 0.5 ? -1 : 1;
+      const hx = lerp(40, LOGICAL_W - 40, f) + side * e * e * 540;
+      const run = Math.abs(Math.sin(t / 80 + i)) * 14;
+      this._henSmall(hx, LOGICAL_H * 0.74 + 96 - run, 22, t, { tint: 0.95, blink: i, phase: i }, true);
+    }
+    // Large Cock bolts to the right and off the edge
+    const cockX = lerp(LOGICAL_W / 2, LOGICAL_W + 140, Math.pow(e, 1.6));
+    ctx.save();
+    ctx.translate(cockX, LOGICAL_H * 0.80 - Math.abs(Math.sin(t / 70)) * 8);
+    this._roosterSide(0, 0, 6.0, t / 1000);
+    ctx.restore();
+    // the Robot Wife marches in from the LEFT, looming larger as she nears
+    const wifeX = lerp(-130, LOGICAL_W * 0.42, e);
+    const ws = lerp(3.2, 4.8, e);
+    const step = Math.abs(Math.sin(t / 150)) * 12;
+    this._drawRobotWife(wifeX, LOGICAL_H * 0.88 - step, ws);
+    this._label(LOGICAL_W / 2, 120, "...UNTIL SUPPERTIME.", "center", "#ff6a6a", 28, true);
+    // fade to black for the cut to the slaughter
+    if (e > 0.82) { ctx.fillStyle = `rgba(0,0,0,${(e - 0.82) / 0.18})`; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H); }
+  }
+
+  drawEndingSlaughter(t, prog, isEnd) {
+    const ctx = this.ctx;
+    if (!this._slayFx) this.resetEndingFx();
+    // grimy slaughter room
+    ctx.fillStyle = "#3a2f2c"; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    ctx.fillStyle = "#5a4a44"; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H * 0.13);
+    ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(0, LOGICAL_H * 0.13, LOGICAL_W, 8);
+
+    const blkTop = LOGICAL_H * 0.60;
+    const cx = LOGICAL_W / 2;
+    const wifeX = cx - 40, wifeY = LOGICAL_H * 0.74, ws = 3.4;
+    const nx = cx + 30;                                  // neck position on the block
+    const swing = clamp01((prog - 0.18) / 0.16);         // the down-swing
+    const chopped = swing >= 1;
+    if (chopped && !this._slayFx.spawned) {
+      this._slayFx.spawned = true;
+      this._slayFx.born = t;
+      for (let i = 0; i < 26; i++) {
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+        const sp = 180 + Math.random() * 360;
+        this._slayFx.drops.push({ x0: nx, y0: blkTop - 30, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120, r: 2 + Math.random() * 4 });
+      }
+      for (let i = 0; i < 16; i++) {
+        const an = i * 2.39;
+        this._slayFx.lens.push({ x: cx + Math.cos(an) * (30 + (i % 5) * 38), y: LOGICAL_H * 0.4 + Math.sin(an) * (40 + (i % 4) * 46), r: 6 + (i % 3) * 7, a: 0.5 + (i % 3) * 0.12 });
+      }
+    }
+    const headAge = this._slayFx.spawned ? (t - this._slayFx.born) / 1000 : 0;
+
+    // robot wife behind the block (the block hides her lower half)
+    this._drawRobotWife(wifeX, wifeY, ws);
+    if (chopped) { // blood spatter across her visor/face
+      ctx.fillStyle = "rgba(150,10,8,.8)";
+      for (let i = 0; i < 11; i++) { const an = i * 2.39; ctx.beginPath(); ctx.arc(wifeX - 6 + Math.cos(an) * (14 + (i % 5) * 16), wifeY - 63 * ws + Math.sin(an) * (10 + (i % 4) * 12), 3 + (i % 3) * 2.6, 0, Math.PI * 2); ctx.fill(); }
+    }
+    // butcher block across the foreground
+    ctx.fillStyle = "#7a5230"; ctx.fillRect(0, blkTop, LOGICAL_W, LOGICAL_H - blkTop);
+    ctx.fillStyle = "#8a6038"; ctx.fillRect(0, blkTop, LOGICAL_W, 10);
+    ctx.fillStyle = "rgba(120,8,8,.4)"; ctx.fillRect(0, blkTop + 10, LOGICAL_W, 6);
+    ctx.strokeStyle = "rgba(60,40,24,.45)"; ctx.lineWidth = 2;
+    for (let gx = 24; gx < LOGICAL_W; gx += 48) { ctx.beginPath(); ctx.moveTo(gx, blkTop + 12); ctx.lineTo(gx, LOGICAL_H); ctx.stroke(); }
+    // Large Cock laying on the block, getting his head taken off
+    this._slayVictim(nx, blkTop, chopped, headAge);
+    // the cleaver in her right hand, swinging down onto the neck
+    const handX = wifeX + 14 * ws, handY = wifeY - 64 * ws;
+    this._cleaver(lerp(handX, nx + 8, swing), lerp(handY, blkTop - 8, swing), lerp(-1.1, 0.15, swing), ws * 0.5 + 1.2);
+    // blood: airborne drops (gravity) + static splats on the lens
+    for (const d of this._slayFx.drops) {
+      const age = headAge;
+      const x = d.x0 + d.vx * age, y = d.y0 + d.vy * age + 800 * age * age;
+      ctx.globalAlpha = clamp01(1.4 - age); ctx.fillStyle = "#b00c0a";
+      ctx.beginPath(); ctx.arc(x, y, d.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (const l of this._slayFx.lens) { ctx.fillStyle = `rgba(110,6,6,${l.a})`; ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill(); }
+
+    if (isEnd) {
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+      this._label(cx, LOGICAL_H * 0.44, "THE END", "center", "#fff", 52, true);
+      this._label(cx, LOGICAL_H * 0.44 + 44, "+1 🍗", "center", "#e8c060", 24, true);
+      if (((t / 500) | 0) % 2 === 0) this._label(cx, LOGICAL_H - 36, "tap for the Pecking Order", "center", "rgba(255,255,255,0.75)", 16);
+    }
+  }
+
+  // Falling confetti (deterministic from t + index).
+  _confetti(t) {
+    const ctx = this.ctx;
+    const cols = ["#ff5a5a", "#ffd24a", "#52c9b1", "#5a8bd6", "#e0a93f", "#fff"];
+    for (let i = 0; i < 46; i++) {
+      const sp = 60 + (i % 7) * 16;
+      const x = ((i * 97) % LOGICAL_W) + Math.sin(t / 400 + i) * 22;
+      const y = ((t * sp / 1000 + i * 53) % (LOGICAL_H + 40)) - 20;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(t / 300 + i);
+      ctx.fillStyle = cols[i % cols.length];
+      ctx.fillRect(-3, -5, 6, 10);
+      ctx.restore();
+    }
+  }
+
+  // A golden championship trophy: cup with handles on a stepped base.
+  _drawTrophy(x, y, s, t) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    // gleam
+    ctx.fillStyle = "rgba(255,240,160,0.35)"; ctx.beginPath(); ctx.arc(0, -22, 30, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#caa036"; // base
+    ctx.fillRect(-14, 18, 28, 6); ctx.fillRect(-10, 10, 20, 9);
+    ctx.fillStyle = "#e8c24a";
+    ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(4, 10); ctx.lineTo(-4, 10); ctx.closePath(); ctx.fill(); // stem
+    // handles
+    ctx.strokeStyle = "#e8c24a"; ctx.lineWidth = 4; ctx.lineCap = "round";
+    for (const sgn of [-1, 1]) { ctx.beginPath(); ctx.arc(sgn * 16, -20, 9, sgn > 0 ? -1.2 : 2, sgn > 0 ? 1.2 : 4.3); ctx.stroke(); }
+    // cup
+    ctx.fillStyle = "#f0d05a";
+    ctx.beginPath(); ctx.moveTo(-16, -34); ctx.lineTo(16, -34); ctx.quadraticCurveTo(14, -6, 0, -2); ctx.quadraticCurveTo(-14, -6, -16, -34); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#fff3b0"; ctx.beginPath(); ctx.ellipse(-6, -28, 3, 10, -0.3, 0, Math.PI * 2); ctx.fill(); // shine
+    // a tiny star
+    ctx.fillStyle = "#caa036"; ctx.font = "900 14px " + FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("★", 0, -20);
+    ctx.restore();
+  }
+
+  // ---- Egg Time art ported for the finale ----
+
+  // The Robot Wife — chrome body, black bob, glowing visor. Ported from Egg Time
+  // (drawRobotWife): feet at (x, gy), `s` scales her up.
+  _drawRobotWife(x, gy, s) {
+    const ctx = this.ctx;
+    s = s || 1;
+    ctx.save();
+    ctx.translate(x, gy);
+    ctx.scale(s, s);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.beginPath(); ctx.ellipse(0, 2, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // chrome legs with knee bolts + block feet
+    ctx.strokeStyle = "#b8c2cc"; ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-5, -20); ctx.lineTo(-5, -1); ctx.moveTo(5, -20); ctx.lineTo(5, -1); ctx.stroke();
+    ctx.fillStyle = "#8a949e"; ctx.beginPath(); ctx.arc(-5, -11, 2.6, 0, Math.PI * 2); ctx.arc(5, -11, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#9aa6b2"; ctx.fillRect(-9, -2, 8, 3); ctx.fillRect(1, -2, 8, 3);
+    // pink skirt with chrome hem
+    ctx.fillStyle = "#e88bbf"; ctx.beginPath(); ctx.moveTo(-7, -40); ctx.lineTo(7, -40); ctx.lineTo(15, -20); ctx.lineTo(-15, -20); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#cfd6de"; ctx.fillRect(-15, -22, 30, 2.5);
+    // chrome torso: panel seams, rivets, glowing heart gauge
+    ctx.fillStyle = "#cfd6de"; ctx.beginPath(); ctx.ellipse(0, -46, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#9aa6b2"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -58); ctx.lineTo(0, -34); ctx.moveTo(-9, -46); ctx.lineTo(9, -46); ctx.stroke();
+    ctx.fillStyle = "#8a949e"; for (const rx of [-8, 8]) for (const ry of [-54, -38]) { ctx.beginPath(); ctx.arc(rx, ry, 1, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = "#ff5d8f"; ctx.beginPath(); ctx.arc(-2, -48, 2, 0, Math.PI * 2); ctx.arc(2, -48, 2, 0, Math.PI * 2); ctx.moveTo(-3.6, -47.4); ctx.lineTo(0, -44); ctx.lineTo(3.6, -47.4); ctx.fill();
+    // shoulder bolts + segmented arms with elbow joints
+    ctx.fillStyle = "#9aa6b2"; ctx.beginPath(); ctx.arc(-10, -54, 2.4, 0, Math.PI * 2); ctx.arc(10, -54, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#c2cad3"; ctx.lineWidth = 4; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-10, -54); ctx.lineTo(-15, -46); ctx.lineTo(-17, -37); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(10, -54); ctx.lineTo(15, -58); ctx.lineTo(17, -66); ctx.stroke();
+    ctx.fillStyle = "#8a949e"; ctx.beginPath(); ctx.arc(-15, -46, 1.8, 0, Math.PI * 2); ctx.arc(15, -58, 1.8, 0, Math.PI * 2); ctx.fill();
+    // neck joint
+    ctx.fillStyle = "#aab4be"; ctx.fillRect(-3, -60, 6, 5);
+    // black bob behind the metal face
+    ctx.fillStyle = "#16161c"; ctx.beginPath(); ctx.ellipse(0, -68, 15, 16, 0, 0, Math.PI * 2); ctx.fill();
+    // metal face plate with a seam
+    ctx.fillStyle = "#dfe6ee"; ctx.beginPath(); ctx.ellipse(0, -63, 11.5, 13, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#b3bcc6"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, -63, 11.5, 13, 0, 0, Math.PI * 2); ctx.stroke();
+    // ear bolts
+    ctx.fillStyle = "#9aa6b2"; ctx.beginPath(); ctx.arc(-12, -63, 2.6, 0, Math.PI * 2); ctx.arc(12, -63, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#6f7c8a"; ctx.beginPath(); ctx.arc(-12, -63, 1, 0, Math.PI * 2); ctx.arc(12, -63, 1, 0, Math.PI * 2); ctx.fill();
+    // bangs + bob tips
+    ctx.fillStyle = "#16161c";
+    ctx.beginPath(); ctx.moveTo(-12, -76); ctx.lineTo(12, -76); ctx.lineTo(12, -70); ctx.quadraticCurveTo(0, -67, -12, -70); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-13, -61); ctx.lineTo(-15, -51); ctx.lineTo(-8.5, -57); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(13, -61); ctx.lineTo(15, -51); ctx.lineTo(8.5, -57); ctx.closePath(); ctx.fill();
+    // glowing visor eyes, cheek lights, speaker-grille mouth
+    ctx.fillStyle = "#36e0d0"; ctx.beginPath(); ctx.ellipse(-4, -66, 2.8, 2.2, 0, 0, Math.PI * 2); ctx.ellipse(4, -66, 2.8, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(54,224,208,.55)"; ctx.beginPath(); ctx.arc(-7, -62, 1.6, 0, Math.PI * 2); ctx.arc(7, -62, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#9aa6b2"; ctx.lineWidth = 1; ctx.beginPath(); for (let gx = -3; gx <= 3; gx += 1.5) { ctx.moveTo(gx, -61); ctx.lineTo(gx, -58); } ctx.stroke();
+    // antenna with a blinking light
+    ctx.strokeStyle = "#aab4be"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -84); ctx.lineTo(0, -90); ctx.stroke();
+    ctx.fillStyle = "#ff5d8f"; ctx.beginPath(); ctx.arc(0, -92, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // A butcher cleaver (ported from Egg Time drawCleaver): pivot at the handle butt.
+  _cleaver(x, y, ang, s) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(s, s);
+    ctx.fillStyle = "#5e3a22"; ctx.fillRect(-4, -2, 8, 26);
+    ctx.fillStyle = "#3a2417"; ctx.fillRect(-4, -2, 2, 26);
+    ctx.fillStyle = "#cdd4db"; ctx.beginPath(); ctx.moveTo(-4, -2); ctx.lineTo(-4, -34); ctx.lineTo(28, -34); ctx.lineTo(28, -6); ctx.lineTo(2, -2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#eef3f8"; ctx.beginPath(); ctx.moveTo(28, -34); ctx.lineTo(28, -6); ctx.lineTo(23, -8); ctx.lineTo(23, -32); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(150,12,10,.85)"; ctx.fillRect(-2, -26, 30, 7);
+    ctx.fillStyle = "rgba(120,8,8,.7)"; ctx.beginPath(); ctx.arc(14, -12, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // A rooster head for the slaughter close-up (ported from Egg Time drawAnimalHead, chicken branch).
+  _roosterHead(x, y, rot, alpha) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.globalAlpha = alpha == null ? 1 : Math.max(0, alpha); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.scale(2, 2);
+    ctx.fillStyle = "#efe9d8"; ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#d23b2e"; ctx.beginPath(); ctx.arc(-4, -12, 4, 0, Math.PI * 2); ctx.arc(1, -14, 4, 0, Math.PI * 2); ctx.arc(6, -12, 3.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-2, 12, 3, 5, 0, 0, Math.PI * 2); ctx.fill(); // wattle
+    ctx.fillStyle = "#e8a13a"; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(23, 3); ctx.lineTo(11, 6); ctx.closePath(); ctx.fill(); // beak
+    ctx.fillStyle = "#2b2118"; ctx.beginPath(); ctx.arc(4, -2, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Large Cock laying on the block; head on the neck until the chop, then it
+  // tumbles away. Ported/adapted from Egg Time drawSlayVictim (chicken branch).
+  _slayVictim(nx, blkTop, chopped, headAge) {
+    const ctx = this.ctx;
+    const S = 1.35;
+    ctx.save(); ctx.translate(nx, blkTop); ctx.scale(S, S);
+    const bodyCx = -96, bodyCy = -26, neckTopY = -30;
+    ctx.fillStyle = "#efe9d8"; ctx.beginPath(); ctx.ellipse(bodyCx, bodyCy, 80, 33, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(bodyCx - 80, bodyCy); ctx.lineTo(bodyCx - 116, bodyCy - 20); ctx.lineTo(bodyCx - 84, bodyCy + 14); ctx.closePath(); ctx.fill(); // tail base
+    // big sickle tail feathers (Large Cock's pride), sweeping up-left
+    ctx.strokeStyle = "#1f6e60"; ctx.lineWidth = 6; ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(bodyCx - 78, bodyCy); ctx.quadraticCurveTo(bodyCx - 120 - i * 8, bodyCy - 30 - i * 8, bodyCx - 96 - i * 10, bodyCy - 56 - i * 10); ctx.stroke(); }
+    ctx.fillStyle = "#e6e0d2"; ctx.beginPath(); ctx.ellipse(bodyCx - 6, bodyCy - 2, 46, 21, 0, 0, Math.PI * 2); ctx.fill(); // wing
+    ctx.fillStyle = "#e0a93f"; ctx.beginPath(); ctx.ellipse(bodyCx + 30, bodyCy - 8, 20, 12, 0, 0, Math.PI * 2); ctx.fill(); // golden saddle
+    ctx.fillStyle = "#e8a13a"; for (const lx of [-30, -2, 26]) ctx.fillRect(bodyCx + lx, bodyCy - 48, 5, 22); // feet up
+    // neck rising to the head
+    ctx.fillStyle = "#e6ddcb";
+    ctx.beginPath(); ctx.moveTo(-10, bodyCy - 6); ctx.lineTo(10, bodyCy - 6); ctx.lineTo(8, neckTopY); ctx.lineTo(-8, neckTopY); ctx.closePath(); ctx.fill();
+    if (chopped) { ctx.fillStyle = "#7a0c0c"; ctx.beginPath(); ctx.ellipse(0, neckTopY, 11, 5, 0, 0, Math.PI * 2); ctx.fill(); } // raw cut
+    if (!chopped) {
+      this._roosterHead(4, neckTopY - 20, 0, 1);
+    } else if (headAge < 1.5) {
+      this._roosterHead(10 + headAge * 300, neckTopY - 16 + (headAge * headAge * 1300 - headAge * 540), headAge * 11, Math.max(0, 1 - (headAge - 0.9) / 0.5));
+    }
+    ctx.restore();
   }
 }

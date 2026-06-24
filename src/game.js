@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.2.6";
+const VERSION = "0.3.0";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -32,6 +32,7 @@ const TEMPLATE = `
       <p class="cr-tag">choose your opponent</p>
       <div class="cr-levels" id="cr-roster"></div>
       <p class="cr-stats" id="cr-record"></p>
+      <button class="cr-btn hidden" id="cr-take-bow">🏆 Take a Bow</button>
       <button class="cr-btn secondary" id="cr-back-start">Back to Title</button>
     </div>
 
@@ -65,13 +66,15 @@ export class Game {
     this.player = new Player();
     this.engine = null;
 
-    this.screen = "start";      // start|select|tutorial|fight|pause|result
+    this.screen = "start";      // start|select|tutorial|fight|pause|result|ending
     this.selectedId = null;
     this.callbacks = {};        // onWin/onLose/onExit from embed options
 
     this.raf = null;
     this.lastTs = 0;
     this.resultPending = null;  // 'win' | 'lose' once the engine settles
+    this.ending = null;         // { scene, t } cinematic state
+    this._onEndingTap = this._onEndingTap.bind(this);
 
     this._loop = this._loop.bind(this);
     this._onResize = this._onResize.bind(this);
@@ -156,6 +159,7 @@ export class Game {
     q("#cr-reset").onclick = () => { Progression.reset(); this._refreshRoster(); this._buildRoster(); };
     q("#cr-back-start").onclick = () => this._show("start");
     q("#cr-back-select").onclick = () => this._show("select");
+    q("#cr-take-bow").onclick = () => { this.audio.resume(); this._startEnding(); };
     q("#cr-begin").onclick = () => this._startFight();
     q("#cr-result-next").onclick = () => this._afterResult();
     q("#cr-result-select").onclick = () => this._show("select");
@@ -200,6 +204,9 @@ export class Game {
     });
     const rec = this.root.querySelector("#cr-record");
     if (rec) rec.textContent = `Wins: ${state.wins}   Losses: ${state.losses}`;
+    // "Take a Bow" replays the champion ending once Todd is beaten.
+    const bow = this.root.querySelector("#cr-take-bow");
+    if (bow) bow.classList.toggle("hidden", !Progression.isDefeated("todd"));
   }
 
   _showTutorial() {
@@ -273,6 +280,11 @@ export class Game {
   }
 
   _afterResult() {
+    // Champion → roll the ending cinematic ("Take a Bow").
+    if (this.root.querySelector("#cr-result-title").textContent === "CHAMPION!") {
+      this._startEnding();
+      return;
+    }
     // Win → advance to next unlocked; Lose → rematch same opponent.
     const idx = OPPONENTS.findIndex((o) => o.id === this.selectedId);
     const next = OPPONENTS[idx + 1];
@@ -287,12 +299,63 @@ export class Game {
     }
   }
 
+  // ---- Ending cinematic: coronation → the wife marches in → slaughter ----
+  // Scenes auto-advance on a timeline; a tap skips to the next beat.
+  _startEnding() {
+    this.engine = null;
+    this.renderer.resetEndingFx();
+    this.ending = { scene: 0, t: 0, fanfare: false, chopped: false };
+    this._show("ending");
+    this.canvas.addEventListener("pointerdown", this._onEndingTap);
+    this.audio.resume();
+    this.audio.fanfare();
+  }
+
+  static get _ENDING_DURS() { return [5200, 3600, 5200]; } // coronation, march, slaughter
+
+  _onEndingTap() {
+    if (!this.ending) return;
+    const durs = Game._ENDING_DURS;
+    if (this.ending.scene >= durs.length) { this._endEnding(); return; }
+    // skip to the end of the current scene (loop will advance it next frame)
+    this.ending.t = durs[this.ending.scene];
+  }
+
+  _updateEnding(dt) {
+    const e = this.ending;
+    const durs = Game._ENDING_DURS;
+    if (e.scene >= durs.length) return; // holding on the final card
+    e.t += dt;
+    // beat-specific one-shot cues
+    if (e.scene === 1 && !e.march && e.t > 200) { e.march = true; }
+    if (e.scene === 2) {
+      const prog = e.t / durs[2];
+      if (prog >= 0.34 && !e.chopped) { e.chopped = true; this.audio.chop(); }
+    }
+    if (e.t >= durs[e.scene]) {
+      e.scene += 1;
+      e.t = 0;
+      if (e.scene === 2) this.renderer.resetEndingFx();
+      if (e.scene >= durs.length) e.scene = durs.length; // clamp → final card
+    }
+  }
+
+  _endEnding() {
+    this.ending = null;
+    this.canvas.removeEventListener("pointerdown", this._onEndingTap);
+    this._show("select");
+  }
+
   // ---- Loop ----
   _loop(ts) {
     this.raf = requestAnimationFrame(this._loop);
     let dt = ts - this.lastTs;
     this.lastTs = ts;
     if (dt > 60) dt = 60; // clamp after tab-switch / hitch
+
+    if (this.screen === "ending" && this.ending) {
+      this._updateEnding(dt);
+    }
 
     if (this.screen === "fight" && this.engine) {
       this.engine.update(dt);
@@ -307,6 +370,12 @@ export class Game {
     const ctx = this.ctx;
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+    if (this.screen === "ending" && this.ending) {
+      this._renderEnding(t);
+      ctx.restore();
+      return;
+    }
 
     const inFight = (this.screen === "fight" || this.screen === "pause") && this.engine;
     const excite = inFight ? (this.engine.fxFlash > 0 ? 1 : 0.2) : 0.1;
@@ -335,6 +404,21 @@ export class Game {
       this.renderer.drawPlayerFull(this.player, t);
     }
     ctx.restore();
+  }
+
+  _renderEnding(t) {
+    const e = this.ending;
+    const durs = Game._ENDING_DURS;
+    if (e.scene === 0) {
+      this.renderer.drawEndingCoronation(t, e.t / durs[0]);
+    } else if (e.scene === 1) {
+      this.renderer.drawEndingMarch(t, e.t / durs[1]);
+    } else {
+      // scene 2 plays out; scene === durs.length holds the final "THE END" card.
+      const isEnd = e.scene >= durs.length;
+      const prog = isEnd ? 1 : e.t / durs[2];
+      this.renderer.drawEndingSlaughter(t, prog, isEnd);
+    }
   }
 
   // ---- Canvas sizing: fixed logical space, scaled to fit, crisp on retina ----

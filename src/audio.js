@@ -88,4 +88,12 @@ export class AudioBus {
   lose() {
     [392, 330, 262].forEach((f, i) => this._tone({ freq: f, type: "sawtooth", dur: 0.25, gain: 0.22, delay: i * 0.16 }));
   }
+  fanfare() {
+    [523, 659, 784, 1046, 1318].forEach((f, i) => this._tone({ freq: f, type: "square", dur: 0.22, gain: 0.22, delay: i * 0.14 }));
+  }
+  chop() { // blade whoosh → meaty thunk
+    this._tone({ freq: 1200, type: "sine", dur: 0.08, gain: 0.14, slideTo: 300 });
+    this._noise({ dur: 0.18, gain: 0.4, delay: 0.08 });
+    this._tone({ freq: 90, type: "sawtooth", dur: 0.22, gain: 0.3, slideTo: 40, delay: 0.08 });
+  }
 }
