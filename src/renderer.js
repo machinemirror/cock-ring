@@ -257,7 +257,7 @@ export class Renderer {
     ctx.save();
     // lay on the mat: rotate the upright figure onto its back, slid to the right
     // by ~half a body length so he sprawls toward the right of the ring.
-    ctx.translate(LOGICAL_W * 0.5 + 84 + 110, LOGICAL_H * 0.86);
+    ctx.translate(LOGICAL_W * 0.5 + 84 + 190, LOGICAL_H * 0.86);
     ctx.rotate(-Math.PI / 2);
     this._drawFigure(cfg, 0, 0, s, layPose, woundFrac, engine.elapsed);
     ctx.restore();
