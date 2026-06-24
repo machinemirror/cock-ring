@@ -2,13 +2,15 @@
 // input to the fight engine. The whole DOM is created here (buildDOM) so the
 // game can be mounted into any container — standalone or embedded in Egg Time.
 
-import { Renderer, LOGICAL_W, LOGICAL_H } from "./renderer.js";
-import { InputHandler } from "./input.js";
-import { AudioBus } from "./audio.js";
-import { Player } from "./player.js";
-import { FightEngine } from "./fightEngine.js";
-import { Progression } from "./progression.js";
-import { OPPONENTS, opponentById } from "./opponents.js";
+// Versioned dynamic imports so a cached page still pulls fresh code (see index.html).
+const V = globalThis.__CRV || "";
+const { Renderer, LOGICAL_W, LOGICAL_H } = await import(`./renderer.js?v=${V}`);
+const { InputHandler } = await import(`./input.js?v=${V}`);
+const { AudioBus } = await import(`./audio.js?v=${V}`);
+const { Player } = await import(`./player.js?v=${V}`);
+const { FightEngine } = await import(`./fightEngine.js?v=${V}`);
+const { Progression } = await import(`./progression.js?v=${V}`);
+const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
 const VERSION = "0.1.0";

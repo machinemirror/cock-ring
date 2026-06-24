@@ -2,8 +2,10 @@
 // standalone page and by a future Egg Time embed, and auto-starts when loaded
 // as a standalone page (a container with id="app" exists and isn't embedded).
 
-import { Game } from "./game.js";
-import { Progression } from "./progression.js";
+// Versioned dynamic imports so a cached page still pulls fresh code (see index.html).
+const V = globalThis.__CRV || "";
+const { Game } = await import(`./game.js?v=${V}`);
+const { Progression } = await import(`./progression.js?v=${V}`);
 
 let game = null;
 

@@ -20,7 +20,7 @@
 // the correct dodge/duck state. That makes timing the dodge the core skill.
 // ============================================================================
 
-import { PLAYER } from "./player.js";
+const { PLAYER } = await import(`./player.js?v=${globalThis.__CRV || ""}`);
 
 const COUNT_STEP_MS = 700;   // referee count cadence
 const COUNT_TO = 3;          // counts before getting up / KO call

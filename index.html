@@ -4,15 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#1d1233" />
-  <meta name="description" content="Cock Ring — a mobile-first barnyard boxing game. Original code and art." />
+  <meta name="description" content="Cock Ring — a mobile-first barnyard boxing game." />
   <title>Cock Ring</title>
-  <link rel="stylesheet" href="style.css" />
+  <script>
+    // Beta cache-busting. GitHub Pages serves everything with a 10-minute cache,
+    // and mobile browsers cache ES modules hard. We stamp every CSS/JS fetch with
+    // a per-load token so a fresh build shows up immediately — even if this
+    // index.html is itself served from cache. The token flows through the whole
+    // module graph (see each module's dynamic imports). Remove for production by
+    // pinning __CRV to a fixed version string.
+    window.__CRV = Date.now();
+    (function () {
+      var l = document.createElement("link");
+      l.rel = "stylesheet";
+      l.href = "style.css?v=" + window.__CRV;
+      document.head.appendChild(l);
+    })();
+  </script>
 </head>
 <body>
-  <!-- The game mounts itself into this container. The whole UI is built in JS
-       (see src/game.js buildDOM) so the game can also be embedded elsewhere. -->
+  <!-- The game mounts itself into this container. -->
   <div id="app"></div>
 
-  <script type="module" src="src/main.js"></script>
+  <script type="module">
+    import("./src/main.js?v=" + window.__CRV);
+  </script>
 </body>
 </html>

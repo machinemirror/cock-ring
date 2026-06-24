@@ -1,6 +1,6 @@
 // localStorage-backed save system. Tracks unlocks, results, best times and the
 // one-time tutorial flag. Falls back to an in-memory store if storage is blocked.
-import { OPPONENTS } from "./opponents.js";
+const { OPPONENTS } = await import(`./opponents.js?v=${globalThis.__CRV || ""}`);
 
 const KEY = "cockring.progress.v1";
 
