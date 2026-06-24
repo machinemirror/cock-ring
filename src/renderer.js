@@ -219,25 +219,47 @@ export class Renderer {
     return pose;
   }
 
+  _oppScale(cfg) {
+    return cfg.build === "huge" ? 2.2 : cfg.build === "stocky" ? 1.95 : 1.7;
+  }
+
+  // Dispatch to the right character art (upright, at cx/baseY).
+  _drawFigure(cfg, cx, baseY, s, pose, woundFrac, t) {
+    if (cfg.art === "todd") this._drawTodd(cx, baseY, s, pose, woundFrac, t);
+    else if (cfg.id === "gbs-agent") this._drawRiotAgent(cx, baseY, s, pose, woundFrac, t);
+    else if (cfg.id === "gbs-leader") this._drawFatLeader(cx, baseY, s, pose, woundFrac, t);
+    else this._drawSuit(cx, baseY, s, this._skin(cfg), pose, woundFrac, t);
+  }
+
   drawOpponent(engine) {
     const cfg = engine.cfg;
     const pose = this._oppPose(engine);
     const woundFrac = 1 - engine.opp.health / engine.opp.maxHealth;
-    const cx = LOGICAL_W / 2;
-    const baseY = OPP_BASE;
-    const s = cfg.build === "huge" ? 2.2 : cfg.build === "stocky" ? 1.95 : 1.7;
+    const s = this._oppScale(cfg);
 
-    if (cfg.art === "todd") {
-      this._drawTodd(cx, baseY, s, pose, woundFrac, engine.elapsed);
-    } else if (cfg.id === "gbs-agent") {
-      this._drawRiotAgent(cx, baseY, s, pose, woundFrac, engine.elapsed);
-    } else if (cfg.id === "gbs-leader") {
-      this._drawFatLeader(cx, baseY, s, pose, woundFrac, engine.elapsed);
-    } else {
-      this._drawSuit(cx, baseY, s, this._skin(cfg), pose, woundFrac, engine.elapsed);
+    if (pose.down) {
+      this._drawDowned(engine, pose, woundFrac);
+      return; // no tell/weak-spot indicators while flat on the mat
     }
+
+    this._drawFigure(cfg, LOGICAL_W / 2, OPP_BASE, s, pose, woundFrac, engine.elapsed);
     this._drawTell(engine);
     this._drawWeakSpot(engine);
+  }
+
+  // Knocked-down opponent: their FULL character art, rotated flat onto the mat
+  // (recognizably themself, not an oval), down in the lower-center of the ring.
+  _drawDowned(engine, pose, woundFrac) {
+    const ctx = this.ctx;
+    const cfg = engine.cfg;
+    const s = this._oppScale(cfg);
+    const layPose = { lean: 0, drop: 0, armSide: 0, armExtend: 0, expr: pose.ko ? "ko" : "dazed", down: false, ko: false, shake: 0 };
+    ctx.save();
+    // lay on the mat: rotate the upright figure onto its back, head toward center
+    ctx.translate(LOGICAL_W * 0.5 + 84, LOGICAL_H * 0.86);
+    ctx.rotate(-Math.PI / 2);
+    this._drawFigure(cfg, 0, 0, s, layPose, woundFrac, engine.elapsed);
+    ctx.restore();
   }
 
   _skin(cfg) {
@@ -943,14 +965,14 @@ export class Renderer {
     this.drawPlayerTail(player, t);
   }
 
-  // When the opponent is down for the count, Large Cock steps to the LEFT
-  // corner and we see him in SIDE PROFILE, gazing up toward ~1–2 o'clock.
+  // When the opponent is down for the count, Large Cock steps all the way to
+  // the LOWER-LEFT corner, side profile, gazing up toward ~1–2 o'clock.
   drawPlayerCorner(player, t) {
     const ctx = this.ctx;
     ctx.save();
-    ctx.translate(100, FLOOR_Y + 6);
+    ctx.translate(70, LOGICAL_H - 46);
     ctx.rotate(-0.34); // tip his head up toward the 1–2 o'clock line
-    this._roosterSide(0, 0, 5.6, t / 1000);
+    this._roosterSide(0, 0, 5.2, t / 1000);
     ctx.restore();
   }
 
@@ -1097,16 +1119,24 @@ export class Renderer {
     ctx.restore();
   }
 
-  // ---- Referee: a little chick (Egg Time coop chick) waving its wing ----
+  // ---- Referee: a little chick in the LOWER-RIGHT corner, counting with a
+  //      speech bubble ("1".."3", then "K.O.!") ----
   drawReferee(engine) {
-    if (engine.countTimer <= 0) return;
+    const counting = engine.countTimer > 0;
+    const ko = engine.opp.state === "ko";
+    if (!counting && !ko) return;
     const ctx = this.ctx;
-    const x = LOGICAL_W / 2 + 90;
-    const y = FLOOR_Y - 4;                    // standing on the mat
+    const x = LOGICAL_W - 64;
+    const y = LOGICAL_H - 46;                 // lower-right corner, on the floor
     const t = engine.elapsed;
+
+    // speech bubble up-and-left of the chick (tail points back to it)
+    const text = ko ? "K.O.!" : String(engine.countValue + 1);
+    this._speechBubble(x - 92, y - 150, text);
+
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(-7, 7);                         // mirrored — faces the other way
+    ctx.scale(-7, 7);                         // mirrored — faces left, toward the ring
     ctx.translate(0, Math.sin(t / 250) * 1.2);
     // shadow
     ctx.fillStyle = "rgba(0,0,0,.18)";
@@ -1129,16 +1159,45 @@ export class Renderer {
     ctx.beginPath(); ctx.moveTo(4, -13); ctx.lineTo(8, -12); ctx.lineTo(4, -11); ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#2b2118"; ctx.beginPath(); ctx.arc(1.5, -14, 1, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
+  }
 
-    // the big count number
+  // A comic speech bubble (the chick's count / KO call). (cx,cy) = its center;
+  // the tail points down-right toward the chick in the corner.
+  _speechBubble(cx, cy, text) {
+    const ctx = this.ctx;
     ctx.save();
+    ctx.font = "900 30px" + FONT;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const w = Math.max(64, ctx.measureText(text).width + 30);
+    const h = 50;
+    let x = cx - w / 2;
+    if (x < 6) x = 6;
+    if (x + w > LOGICAL_W - 6) x = LOGICAL_W - 6 - w;
+    const y = cy - h / 2;
+    const r = 14;
     ctx.fillStyle = "#fff";
-    ctx.font = "900 170px" + FONT;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.lineWidth = 10; ctx.strokeStyle = "rgba(0,0,0,0.6)";
-    const n = String(engine.countValue + 1);
-    ctx.strokeText(n, LOGICAL_W / 2, LOGICAL_H / 2);
-    ctx.fillText(n, LOGICAL_W / 2, LOGICAL_H / 2);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // tail at the bottom-right, pointing down toward the chick
+    ctx.beginPath();
+    ctx.moveTo(x + w - 30, y + h - 2);
+    ctx.lineTo(x + w + 6, y + h + 26);
+    ctx.lineTo(x + w - 8, y + h - 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#000";
+    ctx.fillText(text, x + w / 2, y + h / 2 + 1);
     ctx.restore();
   }
 

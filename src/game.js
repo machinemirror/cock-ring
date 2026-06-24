@@ -46,8 +46,7 @@ const TEMPLATE = `
         <canvas id="cr-coach-canvas" width="72" height="72"></canvas>
         <div><span class="who">Coach Hamhock:</span> <span id="cr-tut-tip"></span></div>
       </div>
-      <p class="cr-text" id="cr-controls"></p>
-      <button class="cr-btn" id="cr-begin">Touch Gloves</button>
+      <button class="cr-btn" id="cr-begin">FIGHT!</button>
       <button class="cr-btn secondary" id="cr-back-select">Back</button>
     </div>
 
@@ -65,10 +64,6 @@ const TEMPLATE = `
     </div>
   </div>
 `;
-
-const CONTROLS_TEXT =
-  "Mobile: tap left/right to peck • swipe left/right to dodge • swipe down to duck/block • tap the Golden Egg meter for your special.\n" +
-  "Desktop: A/D dodge • S duck • J/K peck • Space = Golden Egg special.";
 
 export class Game {
   constructor() {
@@ -233,7 +228,6 @@ export class Game {
     const cfg = opponentById(this.selectedId);
     this.root.querySelector("#cr-tut-name").textContent = `Next up: ${cfg.name}`;
     this.root.querySelector("#cr-tut-tip").textContent = cfg.coachTip;
-    this.root.querySelector("#cr-controls").textContent = CONTROLS_TEXT;
     this._drawCoach();
     this._show("tutorial");
   }
