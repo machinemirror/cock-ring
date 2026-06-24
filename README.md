@@ -1,7 +1,7 @@
 # 🥊 Cock Ring
 
 A mobile-first, **HTML5 Canvas** boxing game. You play **Large Cock**, a rooster
-boxer fighting his way through the **Cock Ring Circuit** — read each opponent's
+boxer fighting his way through the **Pecking Order** — read each opponent's
 tells, slip their punches, manage your stamina, charge the **Golden Egg** meter,
 and knock them all out.
 
@@ -76,7 +76,7 @@ stamina (and some opponents punish it). Fill the meter for a screen-clearing
 special. Drop an opponent enough times to win; get dropped three times and you
 lose.
 
-## Opponent lineup (Cock Ring Circuit)
+## Opponent lineup (Pecking Order)
 
 | #  | Opponent     | Teaches                                              |
 | -- | ------------ | --------------------------------------------------- |

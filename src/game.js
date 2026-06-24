@@ -26,14 +26,14 @@ const TEMPLATE = `
 
     <div class="cr-overlay" id="cr-screen-start">
       <h1 class="cr-title">COCK RING</h1>
-      <p class="cr-subtitle">Cock Ring Circuit — read the tells, slip the punch, counter hard.</p>
+      <p class="cr-subtitle">Pecking Order — read the tells, slip the punch, counter hard.</p>
       <button class="cr-btn" id="cr-play">FIGHT</button>
       <button class="cr-btn secondary" id="cr-reset">Reset Progress</button>
       <p class="cr-build">beta build ${VERSION}</p>
     </div>
 
     <div class="cr-overlay hidden" id="cr-screen-select">
-      <h2 class="cr-h2">Cock Ring Circuit</h2>
+      <h2 class="cr-h2">PECKING ORDER</h2>
       <p class="cr-tag">choose your opponent</p>
       <div class="cr-levels" id="cr-roster"></div>
       <p class="cr-stats" id="cr-record"></p>
@@ -60,7 +60,7 @@ const TEMPLATE = `
       <h2 class="cr-title" id="cr-result-title" style="font-size:46px">K.O.!</h2>
       <p class="cr-text" id="cr-result-text"></p>
       <button class="cr-btn" id="cr-result-next">Continue</button>
-      <button class="cr-btn secondary" id="cr-result-select">Circuit</button>
+      <button class="cr-btn secondary" id="cr-result-select">Pecking Order</button>
     </div>
   </div>
 `;
@@ -281,7 +281,7 @@ export class Game {
       const last = idx === OPPONENTS.length - 1;
       titleEl.textContent = last ? "CHAMPION!" : "WINNER!";
       textEl.textContent = last
-        ? `You cleaned out the whole Cock Ring Circuit in this fight at ${this._fmt(r.time)}. ${FIGHTER_NAME} is the champ!`
+        ? `You cleaned out the whole Pecking Order in this fight at ${this._fmt(r.time)}. ${FIGHTER_NAME} is the champ!`
         : `You knocked out ${cfg.name} in ${this._fmt(r.time)}. The next contender is unlocked.`;
       nextBtn.textContent = last ? "Take a Bow" : "Next Fight";
     } else {
