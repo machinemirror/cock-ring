@@ -1,0 +1,196 @@
+:root {
+  --bg: #1d1233;
+  --bg2: #2a1a4a;
+  --ink: #f7f0ff;
+  --gold: #ffcf3f;
+  --gold-deep: #e0a21a;
+  --red: #ff5a5a;
+  --green: #6ddf7a;
+  --panel: rgba(15, 8, 30, 0.86);
+  --panel-line: rgba(255, 207, 63, 0.4);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0c0718;
+  color: var(--ink);
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Stop the page from scrolling / rubber-banding while playing. */
+body { position: fixed; inset: 0; touch-action: none; }
+
+#app, .cr-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 20%, var(--bg2), var(--bg) 60%, #0c0718 100%);
+  overflow: hidden;
+}
+
+.cr-stage {
+  position: relative;
+  /* Sized by JS to preserve the portrait aspect ratio. */
+}
+
+#cr-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #120a26;
+  touch-action: none;
+  image-rendering: optimizeQuality;
+}
+
+/* ---- Top HUD buttons (during fight) ---- */
+.cr-topbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px;
+  pointer-events: none;
+  z-index: 5;
+}
+.cr-topbar.hidden { display: none; }
+.cr-iconbtn {
+  pointer-events: auto;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  border: 2px solid var(--panel-line);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cr-iconbtn:active { transform: scale(0.94); }
+
+/* ---- Overlay screens ---- */
+.cr-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(8, 4, 18, 0.72);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+.cr-overlay.hidden { display: none; }
+
+.cr-title {
+  font-size: clamp(34px, 11vw, 60px);
+  font-weight: 900;
+  letter-spacing: 2px;
+  margin: 0;
+  color: var(--gold);
+  text-shadow: 0 3px 0 var(--gold-deep), 0 6px 18px rgba(0,0,0,0.6);
+  transform: rotate(-2deg);
+}
+.cr-subtitle { margin: 0; opacity: 0.85; font-size: 16px; max-width: 30ch; }
+.cr-h2 { margin: 0; font-size: 24px; color: var(--gold); }
+.cr-text { margin: 0; font-size: 15px; line-height: 1.5; max-width: 34ch; opacity: 0.92; }
+
+.cr-btn {
+  appearance: none;
+  border: none;
+  border-radius: 16px;
+  padding: 16px 28px;
+  min-width: 200px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #2a1500;
+  background: linear-gradient(180deg, var(--gold), var(--gold-deep));
+  box-shadow: 0 5px 0 #9c6f10, 0 8px 16px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+.cr-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #9c6f10; }
+.cr-btn.secondary {
+  color: var(--ink);
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.4);
+  min-width: 0;
+  padding: 12px 22px;
+  font-size: 16px;
+}
+
+/* ---- Coach speech bubble ---- */
+.cr-coach {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  max-width: 34ch;
+  background: var(--panel);
+  border: 2px solid var(--panel-line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  text-align: left;
+}
+.cr-coach .who { color: var(--gold); font-weight: 800; }
+
+/* ---- Opponent select grid ---- */
+.cr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+  overflow-y: auto;
+  max-height: 64vh;
+  padding: 4px;
+}
+.cr-card {
+  position: relative;
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  padding: 12px 10px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cr-card:active { transform: scale(0.97); }
+.cr-card .num { font-size: 12px; opacity: 0.6; }
+.cr-card .name { font-size: 18px; font-weight: 800; }
+.cr-card .mech { font-size: 12px; opacity: 0.8; line-height: 1.3; }
+.cr-card .swatch {
+  position: absolute; top: 10px; right: 10px;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+}
+.cr-card .badge { font-size: 11px; margin-top: 4px; font-weight: 700; }
+.cr-card.locked { opacity: 0.45; cursor: not-allowed; }
+.cr-card.locked .badge { color: var(--ink); }
+.cr-card.beaten { border-color: var(--green); }
+.cr-card.beaten .badge { color: var(--green); }
+
+.cr-stats { font-size: 13px; opacity: 0.8; }
+
+.cr-legal { font-size: 11px; opacity: 0.5; max-width: 32ch; }
+
+.cr-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+@media (min-height: 760px) {
+  .cr-grid { max-height: 70vh; }
+}

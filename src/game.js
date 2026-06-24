@@ -1,0 +1,362 @@
+// Game orchestration: builds the UI, manages screens, runs the loop, and wires
+// input to the fight engine. The whole DOM is created here (buildDOM) so the
+// game can be mounted into any container — standalone or embedded in Egg Time.
+
+import { Renderer, LOGICAL_W, LOGICAL_H } from "./renderer.js";
+import { InputHandler } from "./input.js";
+import { AudioBus } from "./audio.js";
+import { Player } from "./player.js";
+import { FightEngine } from "./fightEngine.js";
+import { Progression } from "./progression.js";
+import { OPPONENTS, opponentById } from "./opponents.js";
+
+const FIGHTER_NAME = "Large Cock";
+
+const TEMPLATE = `
+  <div class="cr-stage" id="cr-stage">
+    <canvas id="cr-canvas"></canvas>
+
+    <div class="cr-topbar hidden" id="cr-topbar">
+      <button class="cr-iconbtn" id="cr-mute" title="Mute">🔊</button>
+      <button class="cr-iconbtn" id="cr-pause" title="Pause">⏸</button>
+    </div>
+
+    <div class="cr-overlay" id="cr-screen-start">
+      <h1 class="cr-title">COCK RING</h1>
+      <p class="cr-subtitle">Barnyard Circuit — read the tells, slip the punch, counter hard.</p>
+      <button class="cr-btn" id="cr-play">FIGHT</button>
+      <button class="cr-btn secondary" id="cr-reset">Reset Progress</button>
+      <p class="cr-legal">100% original code, characters, art and audio. Not affiliated with or derived from any commercial boxing game or its assets.</p>
+    </div>
+
+    <div class="cr-overlay hidden" id="cr-screen-select">
+      <h2 class="cr-h2">Barnyard Circuit</h2>
+      <div class="cr-grid" id="cr-roster"></div>
+      <p class="cr-stats" id="cr-record"></p>
+      <button class="cr-btn secondary" id="cr-back-start">Back</button>
+    </div>
+
+    <div class="cr-overlay hidden" id="cr-screen-tutorial">
+      <h2 class="cr-h2" id="cr-tut-name">Rat</h2>
+      <div class="cr-coach">
+        <span style="font-size:34px">🐷</span>
+        <div><span class="who">Coach Hamhock:</span> <span id="cr-tut-tip"></span></div>
+      </div>
+      <p class="cr-text" id="cr-controls"></p>
+      <button class="cr-btn" id="cr-begin">Touch Gloves</button>
+      <button class="cr-btn secondary" id="cr-back-select">Back</button>
+    </div>
+
+    <div class="cr-overlay hidden" id="cr-screen-pause">
+      <h2 class="cr-h2">Paused</h2>
+      <button class="cr-btn" id="cr-resume">Resume</button>
+      <button class="cr-btn secondary" id="cr-quit">Leave Fight</button>
+    </div>
+
+    <div class="cr-overlay hidden" id="cr-screen-result">
+      <h2 class="cr-title" id="cr-result-title" style="font-size:46px">K.O.!</h2>
+      <p class="cr-text" id="cr-result-text"></p>
+      <button class="cr-btn" id="cr-result-next">Continue</button>
+      <button class="cr-btn secondary" id="cr-result-select">Circuit</button>
+    </div>
+  </div>
+`;
+
+const CONTROLS_TEXT =
+  "Mobile: tap left/right to peck • swipe left/right to dodge • swipe down to duck/block • tap the Golden Egg meter for your special.\n" +
+  "Desktop: A/D dodge • S duck • J/K peck • Space = Golden Egg special.";
+
+export class Game {
+  constructor() {
+    this.root = null;
+    this.canvas = null;
+    this.ctx = null;
+    this.renderer = null;
+    this.input = null;
+    this.audio = new AudioBus();
+    this.player = new Player();
+    this.engine = null;
+
+    this.screen = "start";      // start|select|tutorial|fight|pause|result
+    this.selectedId = null;
+    this.callbacks = {};        // onWin/onLose/onExit from embed options
+
+    this.raf = null;
+    this.lastTs = 0;
+    this.resultPending = null;  // 'win' | 'lose' once the engine settles
+
+    this._loop = this._loop.bind(this);
+    this._onResize = this._onResize.bind(this);
+  }
+
+  // ---- Mount / unmount ----
+  mount(container, options = {}) {
+    this.root = container;
+    this.root.classList.add("cr-root");
+    this.root.innerHTML = TEMPLATE;
+    this.callbacks = {
+      onWin: options.onWin,
+      onLose: options.onLose,
+      onExit: options.onExit,
+    };
+
+    this.canvas = this.root.querySelector("#cr-canvas");
+    this.ctx = this.canvas.getContext("2d");
+    this.renderer = new Renderer(this.ctx);
+
+    this.input = new InputHandler(this.canvas, {
+      onDodge: (dir) => this._act(() => this.player.dodge(dir) && this.audio.dodge()),
+      onDuck: () => this._act(() => this.player.duck()),
+      onPeck: (side) => this._act(() => this.engine && this.engine.playerPeck(side)),
+      onSpecial: () => this._act(() => this.engine && this.engine.playerSpecial()),
+    });
+
+    this._wireButtons();
+    this._buildRoster();
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+
+    this.lastTs = performance.now();
+    this.raf = requestAnimationFrame(this._loop);
+
+    if (options.startOpponent && opponentById(options.startOpponent)) {
+      this.selectedId = options.startOpponent;
+      this._showTutorial();
+    } else {
+      this._show("start");
+    }
+  }
+
+  unmount() {
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.raf = null;
+    if (this.input) this.input.disable();
+    window.removeEventListener("resize", this._onResize);
+    if (this.root) this.root.innerHTML = "";
+  }
+
+  // Only let fight gestures through while actually fighting.
+  _act(fn) {
+    if (this.screen !== "fight" || !this.engine || this.engine.result) return;
+    this.audio.resume();
+    fn();
+  }
+
+  // ---- Screen management ----
+  _show(screen) {
+    this.screen = screen;
+    const map = {
+      start: "cr-screen-start",
+      select: "cr-screen-select",
+      tutorial: "cr-screen-tutorial",
+      pause: "cr-screen-pause",
+      result: "cr-screen-result",
+    };
+    for (const id of Object.values(map)) {
+      this.root.querySelector("#" + id).classList.add("hidden");
+    }
+    const visible = map[screen];
+    if (visible) this.root.querySelector("#" + visible).classList.remove("hidden");
+
+    const fighting = screen === "fight" || screen === "pause";
+    this.root.querySelector("#cr-topbar").classList.toggle("hidden", !fighting);
+    if (screen === "fight") this.input.enable();
+    else this.input.disable();
+    if (screen === "select") this._refreshRoster();
+  }
+
+  _wireButtons() {
+    const q = (id) => this.root.querySelector(id);
+    q("#cr-play").onclick = () => { this.audio.resume(); this._show("select"); };
+    q("#cr-reset").onclick = () => { Progression.reset(); this._refreshRoster(); this._buildRoster(); };
+    q("#cr-back-start").onclick = () => this._show("start");
+    q("#cr-back-select").onclick = () => this._show("select");
+    q("#cr-begin").onclick = () => this._startFight();
+    q("#cr-resume").onclick = () => { this._show("fight"); };
+    q("#cr-quit").onclick = () => { this.engine = null; this._show("select"); };
+    q("#cr-pause").onclick = () => { if (this.screen === "fight") this._show("pause"); };
+    q("#cr-mute").onclick = (e) => {
+      const m = !this.audio.muted;
+      this.audio.setMuted(m);
+      e.currentTarget.textContent = m ? "🔇" : "🔊";
+    };
+    q("#cr-result-next").onclick = () => this._afterResult();
+    q("#cr-result-select").onclick = () => this._show("select");
+  }
+
+  _buildRoster() {
+    const grid = this.root.querySelector("#cr-roster");
+    grid.innerHTML = "";
+    OPPONENTS.forEach((o, i) => {
+      const card = document.createElement("button");
+      card.className = "cr-card";
+      card.dataset.id = o.id;
+      card.innerHTML = `
+        <span class="swatch" style="background:${o.palette.body}"></span>
+        <span class="num">#${i + 1}</span>
+        <span class="name">${o.name}</span>
+        <span class="mech">${o.mechanic}</span>
+        <span class="badge"></span>`;
+      card.onclick = () => {
+        if (card.classList.contains("locked")) return;
+        this.selectedId = o.id;
+        this._showTutorial();
+      };
+      grid.appendChild(card);
+    });
+    this._refreshRoster();
+  }
+
+  _refreshRoster() {
+    const state = Progression.get();
+    this.root.querySelectorAll(".cr-card").forEach((card) => {
+      const id = card.dataset.id;
+      const unlocked = Progression.isUnlocked(id);
+      const beaten = Progression.isDefeated(id);
+      card.classList.toggle("locked", !unlocked);
+      card.classList.toggle("beaten", beaten);
+      const badge = card.querySelector(".badge");
+      if (!unlocked) badge.textContent = "🔒 Locked";
+      else if (beaten) badge.textContent = "✔ Defeated  " + this._fmt(state.bestTimes[id]);
+      else badge.textContent = "▶ Available";
+    });
+    const rec = this.root.querySelector("#cr-record");
+    if (rec) rec.textContent = `Wins: ${state.wins}   Losses: ${state.losses}`;
+  }
+
+  _showTutorial() {
+    const cfg = opponentById(this.selectedId);
+    this.root.querySelector("#cr-tut-name").textContent = `Next up: ${cfg.name}`;
+    this.root.querySelector("#cr-tut-tip").textContent = cfg.coachTip;
+    this.root.querySelector("#cr-controls").textContent = CONTROLS_TEXT;
+    this._show("tutorial");
+  }
+
+  _startFight() {
+    const cfg = opponentById(this.selectedId);
+    Progression.markTutorialShown();
+    this.player.reset();
+    this.resultPending = null;
+    this.engine = new FightEngine(cfg, this.player, this.audio, {
+      onWin: (timeMs) => this._onWin(timeMs),
+      onLose: () => this._onLose(),
+    });
+    this._show("fight");
+  }
+
+  _onWin(timeMs) {
+    Progression.recordWin(this.selectedId, timeMs);
+    this.resultPending = { type: "win", time: timeMs };
+    if (this.callbacks.onWin) this.callbacks.onWin({ opponent: this.selectedId, timeMs });
+  }
+
+  _onLose() {
+    Progression.recordLoss(this.selectedId);
+    this.resultPending = { type: "lose" };
+    if (this.callbacks.onLose) this.callbacks.onLose({ opponent: this.selectedId });
+  }
+
+  // The engine plays its KO/down animation for a beat before we show the screen.
+  _settleResult() {
+    if (!this.resultPending) return;
+    if (this.engine && this.engine.opp.timer > 0) return; // let the pose finish
+    const r = this.resultPending;
+    const cfg = opponentById(this.selectedId);
+    const titleEl = this.root.querySelector("#cr-result-title");
+    const textEl = this.root.querySelector("#cr-result-text");
+    const nextBtn = this.root.querySelector("#cr-result-next");
+    if (r.type === "win") {
+      const idx = OPPONENTS.findIndex((o) => o.id === this.selectedId);
+      const last = idx === OPPONENTS.length - 1;
+      titleEl.textContent = last ? "CHAMPION!" : "WINNER!";
+      textEl.textContent = last
+        ? `You cleaned out the whole Barnyard Circuit in this fight at ${this._fmt(r.time)}. ${FIGHTER_NAME} is the champ!`
+        : `You knocked out ${cfg.name} in ${this._fmt(r.time)}. The next contender is unlocked.`;
+      nextBtn.textContent = last ? "Take a Bow" : "Next Fight";
+    } else {
+      titleEl.textContent = "DOWN!";
+      textEl.textContent = `${cfg.name} put ${FIGHTER_NAME} on the mat. Shake it off and run it back.`;
+      nextBtn.textContent = "Rematch";
+    }
+    this.engine = null;
+    this.resultPending = "shown";
+    this._show("result");
+  }
+
+  _afterResult() {
+    // Win → advance to next unlocked; Lose → rematch same opponent.
+    const idx = OPPONENTS.findIndex((o) => o.id === this.selectedId);
+    const next = OPPONENTS[idx + 1];
+    if (this.root.querySelector("#cr-result-title").textContent !== "DOWN!" &&
+        next && Progression.isUnlocked(next.id)) {
+      this.selectedId = next.id;
+      this._showTutorial();
+    } else if (this.root.querySelector("#cr-result-title").textContent === "DOWN!") {
+      this._showTutorial();
+    } else {
+      this._show("select");
+    }
+  }
+
+  // ---- Loop ----
+  _loop(ts) {
+    this.raf = requestAnimationFrame(this._loop);
+    let dt = ts - this.lastTs;
+    this.lastTs = ts;
+    if (dt > 60) dt = 60; // clamp after tab-switch / hitch
+
+    if (this.screen === "fight" && this.engine) {
+      this.engine.update(dt);
+      if (this.engine.result && this.resultPending && this.resultPending !== "shown") {
+        this._settleResult();
+      }
+    }
+    this._render(ts);
+  }
+
+  _render(t) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+    const inFight = (this.screen === "fight" || this.screen === "pause") && this.engine;
+    const excite = inFight ? (this.engine.fxFlash > 0 ? 1 : 0.2) : 0.1;
+    this.renderer.drawArena(t, excite);
+
+    if (inFight) {
+      this.renderer.drawOpponent(this.engine);
+      this.renderer.drawPlayer(this.player, this.engine.elapsed);
+      this.renderer.drawReferee(this.engine);
+      this.renderer.drawHud(this.engine, this.player);
+    } else {
+      // Idle showcase rooster behind menus.
+      this.renderer.drawPlayer(this.player, t);
+    }
+    ctx.restore();
+  }
+
+  // ---- Canvas sizing: fixed logical space, scaled to fit, crisp on retina ----
+  _onResize() {
+    const stage = this.root.querySelector("#cr-stage");
+    const availW = this.root.clientWidth;
+    const availH = this.root.clientHeight;
+    const scale = Math.min(availW / LOGICAL_W, availH / LOGICAL_H);
+    const cssW = Math.round(LOGICAL_W * scale);
+    const cssH = Math.round(LOGICAL_H * scale);
+    stage.style.width = cssW + "px";
+    stage.style.height = cssH + "px";
+
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.canvas.style.width = cssW + "px";
+    this.canvas.style.height = cssH + "px";
+    this.canvas.width = Math.round(LOGICAL_W * this.dpr);
+    this.canvas.height = Math.round(LOGICAL_H * this.dpr);
+  }
+
+  _fmt(ms) {
+    if (!ms && ms !== 0) return "—";
+    const s = Math.floor(ms / 1000);
+    const cs = Math.floor((ms % 1000) / 10);
+    return `${s}.${String(cs).padStart(2, "0")}s`;
+  }
+}
