@@ -1392,9 +1392,14 @@ export class Renderer {
         const sp = 160 + Math.random() * 480;
         this._slayFx.drops.push({ x0: nx + (Math.random() - 0.5) * 16, y0: blkTop - 30, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 130, r: 2 + Math.random() * 6, delay: Math.random() * 0.7 });
       }
-      // splatter all over the lens
-      for (let i = 0; i < 36; i++) {
-        this._slayFx.lens.push({ x: Math.random() * LOGICAL_W, y: Math.random() * LOGICAL_H * 0.62, r: 4 + Math.random() * 20, a: 0.4 + Math.random() * 0.45 });
+      // splatter all over the lens — dense, full-screen, mixed sizes
+      for (let i = 0; i < 80; i++) {
+        const big = Math.random() < 0.22;
+        this._slayFx.lens.push({ x: Math.random() * LOGICAL_W, y: Math.random() * LOGICAL_H, r: big ? 16 + Math.random() * 30 : 3 + Math.random() * 14, a: 0.4 + Math.random() * 0.5 });
+      }
+      // a few drip streaks running down the lens
+      for (let i = 0; i < 10; i++) {
+        this._slayFx.lens.push({ x: Math.random() * LOGICAL_W, y: Math.random() * LOGICAL_H * 0.8, r: 4 + Math.random() * 7, a: 0.45 + Math.random() * 0.4, drip: 30 + Math.random() * 120 });
       }
       // pooling blood on the block at the neck
       for (let i = 0; i < 3; i++) this._slayFx.pools.push({ x: nx + (i - 1) * 30, y: blkTop + 18 + i * 5, max: 46 + i * 26 });
@@ -1440,7 +1445,11 @@ export class Renderer {
       ctx.beginPath(); ctx.arc(x, y, d.r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    for (const l of this._slayFx.lens) { ctx.fillStyle = `rgba(110,6,6,${l.a})`; ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill(); }
+    for (const l of this._slayFx.lens) {
+      ctx.fillStyle = `rgba(110,6,6,${l.a})`;
+      if (l.drip) { const run = Math.min(l.drip, headAge * 90); ctx.fillRect(l.x - l.r * 0.5, l.y, l.r, run); ctx.beginPath(); ctx.arc(l.x, l.y + run, l.r * 0.7, 0, Math.PI * 2); ctx.fill(); }
+      ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
   // Falling confetti (deterministic from t + index).
