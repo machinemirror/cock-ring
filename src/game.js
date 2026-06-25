@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.4.1";
+const VERSION = "0.4.2";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -28,12 +28,25 @@ const TEMPLATE = `
     </div>
 
     <div class="cr-overlay hidden" id="cr-screen-select">
+      <button class="cr-help" id="cr-help" aria-label="How to play">?</button>
       <h2 class="cr-h2">PECKING ORDER</h2>
       <p class="cr-tag">choose your opponent</p>
       <div class="cr-levels" id="cr-roster"></div>
       <p class="cr-stats" id="cr-record"></p>
       <button class="cr-btn hidden" id="cr-take-bow">🏆 Take a Bow</button>
       <button class="cr-btn secondary" id="cr-back-start">Back to Title</button>
+    </div>
+
+    <div class="cr-overlay hidden" id="cr-screen-howto">
+      <h2 class="cr-h2">HOW TO FIGHT</h2>
+      <div class="cr-howto">
+        <p><b>👈 👉 Swipe left / right</b><br>WEAVE. When he winds up, an arrow flashes the safe side — swipe that way to slip the punch.</p>
+        <p><b>👇 Swipe down</b><br>DUCK under his high hooks.</p>
+        <p><b>👆 Tap left / right</b><br>PECK! Right after a clean weave he's wide OPEN — tap to land beak shots. Pecking his guard does nothing (and some opponents punish it).</p>
+        <p><b>⭐ Tap the top-center meter</b><br>Unleash your GOLDEN EGG special once it fills up.</p>
+        <p><b>🥚 Three knockdowns and you're out.</b><br>Read the tell → weave → peck the opening. That's the whole game.</p>
+      </div>
+      <button class="cr-btn" id="cr-howto-back">Got it</button>
     </div>
 
     <div class="cr-overlay hidden" id="cr-screen-tutorial">
@@ -163,6 +176,7 @@ export class Game {
       select: "cr-screen-select",
       tutorial: "cr-screen-tutorial",
       result: "cr-screen-result",
+      howto: "cr-screen-howto",
     };
     for (const id of Object.values(map)) {
       this.root.querySelector("#" + id).classList.add("hidden");
@@ -190,6 +204,8 @@ export class Game {
       q("#cr-back-start").onclick = () => this._show("start");
     }
     q("#cr-back-select").onclick = () => this._show("select");
+    q("#cr-help").onclick = () => this._show("howto");
+    q("#cr-howto-back").onclick = () => this._show("select");
     q("#cr-take-bow").onclick = () => { this.audio.resume(); this._startEnding(); };
     q("#cr-begin").onclick = () => this._startFight();
     q("#cr-result-next").onclick = () => this._afterResult();
