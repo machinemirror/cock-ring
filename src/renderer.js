@@ -1364,7 +1364,8 @@ export class Renderer {
     const ws = lerp(3.4, 5.2, e);
     const step = Math.abs(Math.sin(t / 130)) * 14;
     this._drawRobotWife(wifeX, LOGICAL_H * 0.90 - step, ws);
-    this._label(LOGICAL_W / 2, 120, "...UNTIL SUPPERTIME.", "center", "#ff6a6a", 28, true);
+    this._label(LOGICAL_W / 2, 128, "...UNTIL", "center", "#ff6a6a", 52, true);
+    this._label(LOGICAL_W / 2, 184, "SUPPERTIME.", "center", "#ff6a6a", 52, true);
     // fade to black for the cut to the slaughter
     if (e > 0.82) { ctx.fillStyle = `rgba(0,0,0,${(e - 0.82) / 0.18})`; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H); }
   }
