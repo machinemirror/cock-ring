@@ -107,6 +107,12 @@ body { position: fixed; inset: 0; touch-action: none; }
   text-shadow: 0 3px 0 var(--gold-deep), 0 6px 18px rgba(0,0,0,0.6);
   transform: rotate(-2deg);
 }
+/* Launch title: big, stacked on two lines (COCK / RING!). */
+h1.cr-title {
+  font-size: clamp(68px, 24vw, 128px);
+  line-height: 0.9;
+  letter-spacing: 4px;
+}
 .cr-subtitle { margin: 0; opacity: 0.85; font-size: 16px; max-width: 30ch; }
 .cr-h2 { margin: 0; font-size: 24px; color: var(--gold); }
 .cr-text { margin: 0; font-size: 15px; line-height: 1.5; max-width: 34ch; opacity: 0.92; }

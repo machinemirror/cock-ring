@@ -13,14 +13,14 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.3.3";
+const VERSION = "0.3.4";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
     <canvas id="cr-canvas"></canvas>
 
     <div class="cr-overlay" id="cr-screen-start">
-      <h1 class="cr-title">COCK RING</h1>
+      <h1 class="cr-title">COCK<br>RING!</h1>
       <p class="cr-subtitle">Are you a featherweight champion?</p>
       <button class="cr-btn" id="cr-play">FIGHT</button>
       <button class="cr-btn secondary" id="cr-reset">Reset Progress</button>
