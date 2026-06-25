@@ -1379,7 +1379,7 @@ export class Renderer {
 
     const blkTop = LOGICAL_H * 0.60;
     const cx = LOGICAL_W / 2;
-    const wifeX = cx - 34, wifeY = LOGICAL_H * 0.82, ws = 5.6; // big, like the original
+    const wifeX = cx - 34, wifeY = LOGICAL_H * 0.84, ws = 6.6; // big, like the original
     const nx = cx + 40;                                  // neck position on the block
     const swing = clamp01((prog - 0.18) / 0.16);         // the down-swing
     const chopped = swing >= 1;
