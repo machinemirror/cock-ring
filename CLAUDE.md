@@ -20,6 +20,10 @@ into the **Egg Time** game as a module. Live at
 - Supporting cast: a dense, overlapping crowd of **hens + front-facing pigs**;
   a **chick referee** in the lower-right who counts via a **speech bubble**
   ("1".."3", then "K.O.!"); **Coach Hamhock** (pig) gives a tip in the tutorial.
+- A round **"?" button in the upper-right of the Pecking Order** (select) screen
+  opens a mobile-focused **HOW TO FIGHT** panel (`#cr-help` → `#cr-screen-howto`):
+  swipe L/R to weave, swipe down to duck, tap L/R to peck the opening, tap the
+  top-center meter for the special. Shown in both standalone and the embed.
 
 ## Fight mechanics (modeled on Egg Time's Lv2 cock fight)
 

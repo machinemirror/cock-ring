@@ -19,7 +19,8 @@ data, or copyrighted assets are used.
 - **Canvas rendering** — every character is drawn with shapes; no image files.
 - Synthesized sound via the **Web Audio API** — no audio files.
 - **localStorage** save: unlocks, defeats, best times, win/loss record.
-- Designed to drop into the existing **Egg Time** game later as a module.
+- Plays **standalone**, and is also **embedded into Egg Time** as the 🥊 Cock Ring
+  map feature (unlocked after beating Egg Time's Lv2) via the public API below.
 
 ## How a fight works (Egg Time Lv2 "cock fight" style)
 
@@ -42,6 +43,9 @@ three times and you lose — the **chick referee** counts you both out.
 **Desktop**
 - `A` / `←` weave left · `D` / `→` weave right · `S` / `↓` duck
 - `J` peck left · `K` peck right · `Space` Golden Egg special
+
+A round **"?" button in the upper-right corner of the Pecking Order** screen opens a
+mobile-focused **HOW TO FIGHT** panel with these same controls (standalone + embedded).
 
 ## The Pecking Order (opponents)
 
