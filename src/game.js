@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -315,19 +315,14 @@ export class Game {
 
   _onEndingTap() {
     if (!this.ending) return;
-    const durs = Game._ENDING_DURS;
-    if (this.ending.scene >= durs.length) { this._endEnding(); return; }
-    // skip to the end of the current scene (loop will advance it next frame)
-    this.ending.t = durs[this.ending.scene];
+    // skip to the end of the current scene (loop advances/ends it next frame)
+    this.ending.t = Game._ENDING_DURS[this.ending.scene];
   }
 
   _updateEnding(dt) {
     const e = this.ending;
     const durs = Game._ENDING_DURS;
-    if (e.scene >= durs.length) return; // holding on the final card
     e.t += dt;
-    // beat-specific one-shot cues
-    if (e.scene === 1 && !e.march && e.t > 200) { e.march = true; }
     if (e.scene === 2) {
       const prog = e.t / durs[2];
       if (prog >= 0.34 && !e.chopped) { e.chopped = true; this.audio.chop(); }
@@ -336,7 +331,7 @@ export class Game {
       e.scene += 1;
       e.t = 0;
       if (e.scene === 2) this.renderer.resetEndingFx();
-      if (e.scene >= durs.length) e.scene = durs.length; // clamp → final card
+      if (e.scene >= durs.length) { this._endEnding(); } // slaughter done → Pecking Order
     }
   }
 
@@ -409,16 +404,9 @@ export class Game {
   _renderEnding(t) {
     const e = this.ending;
     const durs = Game._ENDING_DURS;
-    if (e.scene === 0) {
-      this.renderer.drawEndingCoronation(t, e.t / durs[0]);
-    } else if (e.scene === 1) {
-      this.renderer.drawEndingMarch(t, e.t / durs[1]);
-    } else {
-      // scene 2 plays out; scene === durs.length holds the final "THE END" card.
-      const isEnd = e.scene >= durs.length;
-      const prog = isEnd ? 1 : e.t / durs[2];
-      this.renderer.drawEndingSlaughter(t, prog, isEnd);
-    }
+    if (e.scene === 0) this.renderer.drawEndingCoronation(t, e.t / durs[0]);
+    else if (e.scene === 1) this.renderer.drawEndingMarch(t, e.t / durs[1]);
+    else this.renderer.drawEndingSlaughter(t, e.t / durs[2]);
   }
 
   // ---- Canvas sizing: fixed logical space, scaled to fit, crisp on retina ----

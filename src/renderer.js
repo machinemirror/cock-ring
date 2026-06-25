@@ -1317,26 +1317,18 @@ export class Renderer {
   // slaughter — she takes his head off on the block, blood on the lens.
 
   resetEndingFx() {
-    this._slayFx = { drops: [], lens: [], spawned: false, born: 0 };
+    this._slayFx = { drops: [], lens: [], pools: [], spawned: false, born: 0 };
   }
 
   drawEndingCoronation(t, prog) {
     const ctx = this.ctx;
     this.drawArena(t, 1);
-    const cx = LOGICAL_W / 2, podY = LOGICAL_H * 0.74;
+    const cx = LOGICAL_W / 2, podY = LOGICAL_H * 0.70;
     // golden glow behind the champ
     const g = ctx.createRadialGradient(cx, podY - 150, 30, cx, podY - 150, 380);
     g.addColorStop(0, "rgba(255,210,74,0.55)"); g.addColorStop(1, "rgba(255,210,74,0)");
     ctx.fillStyle = g; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
     this._confetti(t);
-    // a cheering arc of hens across the foreground
-    const hens = 9;
-    for (let i = 0; i < hens; i++) {
-      const f = i / (hens - 1);
-      const hx = lerp(40, LOGICAL_W - 40, f);
-      const jump = Math.abs(Math.sin(t / 200 + i * 1.7)) * 16;
-      this._henSmall(hx, podY + 96 - jump, 22 + (i % 2) * 4, t, { tint: 0.95, blink: i, phase: i }, true);
-    }
     // podium
     ctx.fillStyle = "#caa036"; ctx.fillRect(cx - 72, podY, 144, 64);
     ctx.fillStyle = "#e8b34a"; ctx.fillRect(cx - 72, podY, 144, 10);
@@ -1347,42 +1339,37 @@ export class Renderer {
     ctx.restore();
     // the trophy beside him
     this._drawTrophy(cx + 104, podY - 4, 1.6, t);
+    // his flock — hens AND chicks — celebrating in FRONT of the podium
+    this._endCrowd(t, { baseY: podY + 84, flee: 0, speed: 1 });
     // title banner
     this._label(cx, 150, "FEATHERWEIGHT", "center", "#ffd24a", 40, true);
     this._label(cx, 196, "WORLD CHAMPION", "center", "#fff", 40, true);
-    if (((t / 500) | 0) % 2 === 0) this._label(cx, LOGICAL_H - 36, "tap to continue", "center", "rgba(255,255,255,0.75)", 16);
+    if (((t / 500) | 0) % 2 === 0) this._label(cx, LOGICAL_H - 30, "tap to continue", "center", "rgba(255,255,255,0.75)", 16);
   }
 
   drawEndingMarch(t, prog) {
     const ctx = this.ctx;
     this.drawArena(t, 0.5);
     const e = clamp01(prog);
-    // hens flee toward the nearest edge and off-screen
-    const hens = 9;
-    for (let i = 0; i < hens; i++) {
-      const f = i / (hens - 1);
-      const side = f < 0.5 ? -1 : 1;
-      const hx = lerp(40, LOGICAL_W - 40, f) + side * e * e * 540;
-      const run = Math.abs(Math.sin(t / 80 + i)) * 14;
-      this._henSmall(hx, LOGICAL_H * 0.74 + 96 - run, 22, t, { tint: 0.95, blink: i, phase: i }, true);
-    }
     // Large Cock bolts to the right and off the edge
     const cockX = lerp(LOGICAL_W / 2, LOGICAL_W + 140, Math.pow(e, 1.6));
     ctx.save();
-    ctx.translate(cockX, LOGICAL_H * 0.80 - Math.abs(Math.sin(t / 70)) * 8);
+    ctx.translate(cockX, LOGICAL_H * 0.78 - Math.abs(Math.sin(t / 60)) * 10);
     this._roosterSide(0, 0, 6.0, t / 1000);
     ctx.restore();
+    // the whole flock scatters — faster the closer she gets
+    this._endCrowd(t, { baseY: LOGICAL_H * 0.70 + 84, flee: e, speed: 1.6 + e * 2.6 });
     // the Robot Wife marches in from the LEFT, looming larger as she nears
     const wifeX = lerp(-130, LOGICAL_W * 0.42, e);
-    const ws = lerp(3.2, 4.8, e);
-    const step = Math.abs(Math.sin(t / 150)) * 12;
-    this._drawRobotWife(wifeX, LOGICAL_H * 0.88 - step, ws);
+    const ws = lerp(3.4, 5.2, e);
+    const step = Math.abs(Math.sin(t / 130)) * 14;
+    this._drawRobotWife(wifeX, LOGICAL_H * 0.90 - step, ws);
     this._label(LOGICAL_W / 2, 120, "...UNTIL SUPPERTIME.", "center", "#ff6a6a", 28, true);
     // fade to black for the cut to the slaughter
     if (e > 0.82) { ctx.fillStyle = `rgba(0,0,0,${(e - 0.82) / 0.18})`; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H); }
   }
 
-  drawEndingSlaughter(t, prog, isEnd) {
+  drawEndingSlaughter(t, prog) {
     const ctx = this.ctx;
     if (!this._slayFx) this.resetEndingFx();
     // grimy slaughter room
@@ -1392,30 +1379,34 @@ export class Renderer {
 
     const blkTop = LOGICAL_H * 0.60;
     const cx = LOGICAL_W / 2;
-    const wifeX = cx - 40, wifeY = LOGICAL_H * 0.74, ws = 3.4;
-    const nx = cx + 30;                                  // neck position on the block
+    const wifeX = cx - 34, wifeY = LOGICAL_H * 0.82, ws = 5.6; // big, like the original
+    const nx = cx + 40;                                  // neck position on the block
     const swing = clamp01((prog - 0.18) / 0.16);         // the down-swing
     const chopped = swing >= 1;
     if (chopped && !this._slayFx.spawned) {
       this._slayFx.spawned = true;
       this._slayFx.born = t;
-      for (let i = 0; i < 26; i++) {
-        const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
-        const sp = 180 + Math.random() * 360;
-        this._slayFx.drops.push({ x0: nx, y0: blkTop - 30, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120, r: 2 + Math.random() * 4 });
+      // a heavy arterial burst — staggered delays make it keep gushing ~0.7s
+      for (let i = 0; i < 90; i++) {
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.6;
+        const sp = 160 + Math.random() * 480;
+        this._slayFx.drops.push({ x0: nx + (Math.random() - 0.5) * 16, y0: blkTop - 30, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 130, r: 2 + Math.random() * 6, delay: Math.random() * 0.7 });
       }
-      for (let i = 0; i < 16; i++) {
-        const an = i * 2.39;
-        this._slayFx.lens.push({ x: cx + Math.cos(an) * (30 + (i % 5) * 38), y: LOGICAL_H * 0.4 + Math.sin(an) * (40 + (i % 4) * 46), r: 6 + (i % 3) * 7, a: 0.5 + (i % 3) * 0.12 });
+      // splatter all over the lens
+      for (let i = 0; i < 36; i++) {
+        this._slayFx.lens.push({ x: Math.random() * LOGICAL_W, y: Math.random() * LOGICAL_H * 0.62, r: 4 + Math.random() * 20, a: 0.4 + Math.random() * 0.45 });
       }
+      // pooling blood on the block at the neck
+      for (let i = 0; i < 3; i++) this._slayFx.pools.push({ x: nx + (i - 1) * 30, y: blkTop + 18 + i * 5, max: 46 + i * 26 });
     }
     const headAge = this._slayFx.spawned ? (t - this._slayFx.born) / 1000 : 0;
 
     // robot wife behind the block (the block hides her lower half)
     this._drawRobotWife(wifeX, wifeY, ws);
-    if (chopped) { // blood spatter across her visor/face
-      ctx.fillStyle = "rgba(150,10,8,.8)";
-      for (let i = 0; i < 11; i++) { const an = i * 2.39; ctx.beginPath(); ctx.arc(wifeX - 6 + Math.cos(an) * (14 + (i % 5) * 16), wifeY - 63 * ws + Math.sin(an) * (10 + (i % 4) * 12), 3 + (i % 3) * 2.6, 0, Math.PI * 2); ctx.fill(); }
+    if (chopped) { // heavy blood spatter across her visor/face
+      ctx.fillStyle = "rgba(150,10,8,.85)";
+      const fx = wifeX - 6, fy = wifeY - 63 * ws;
+      for (let i = 0; i < 24; i++) { const an = i * 2.39; const rr = 16 + (i % 6) * 16; ctx.beginPath(); ctx.arc(fx + Math.cos(an) * rr * 1.5, fy + Math.sin(an) * rr, 3 + (i % 3) * 3.4, 0, Math.PI * 2); ctx.fill(); }
     }
     // butcher block across the foreground
     ctx.fillStyle = "#7a5230"; ctx.fillRect(0, blkTop, LOGICAL_W, LOGICAL_H - blkTop);
@@ -1423,27 +1414,33 @@ export class Renderer {
     ctx.fillStyle = "rgba(120,8,8,.4)"; ctx.fillRect(0, blkTop + 10, LOGICAL_W, 6);
     ctx.strokeStyle = "rgba(60,40,24,.45)"; ctx.lineWidth = 2;
     for (let gx = 24; gx < LOGICAL_W; gx += 48) { ctx.beginPath(); ctx.moveTo(gx, blkTop + 12); ctx.lineTo(gx, LOGICAL_H); ctx.stroke(); }
+    // blood pooling on the block + running down its face from the neck
+    for (const p of this._slayFx.pools) {
+      const r = Math.min(p.max, headAge * 70);
+      ctx.fillStyle = "rgba(120,8,8,.82)"; ctx.beginPath(); ctx.ellipse(p.x, p.y, r, r * 0.34, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    if (chopped) {
+      const run = clamp01(headAge * 0.7) * (LOGICAL_H - blkTop);
+      ctx.fillStyle = "rgba(120,8,8,.72)";
+      ctx.fillRect(nx - 12, blkTop, 24, run);
+      ctx.fillRect(nx - 30, blkTop, 9, run * 0.7);
+      ctx.fillRect(nx + 18, blkTop, 7, run * 0.85);
+    }
     // Large Cock laying on the block, getting his head taken off
     this._slayVictim(nx, blkTop, chopped, headAge);
     // the cleaver in her right hand, swinging down onto the neck
     const handX = wifeX + 14 * ws, handY = wifeY - 64 * ws;
     this._cleaver(lerp(handX, nx + 8, swing), lerp(handY, blkTop - 8, swing), lerp(-1.1, 0.15, swing), ws * 0.5 + 1.2);
-    // blood: airborne drops (gravity) + static splats on the lens
+    // blood: airborne drops (gravity, staggered gush) + splats on the lens
     for (const d of this._slayFx.drops) {
-      const age = headAge;
-      const x = d.x0 + d.vx * age, y = d.y0 + d.vy * age + 800 * age * age;
-      ctx.globalAlpha = clamp01(1.4 - age); ctx.fillStyle = "#b00c0a";
+      const age = headAge - (d.delay || 0);
+      if (age <= 0) continue;
+      const x = d.x0 + d.vx * age, y = d.y0 + d.vy * age + 900 * age * age;
+      ctx.globalAlpha = clamp01(1.5 - age); ctx.fillStyle = "#b00c0a";
       ctx.beginPath(); ctx.arc(x, y, d.r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
     for (const l of this._slayFx.lens) { ctx.fillStyle = `rgba(110,6,6,${l.a})`; ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); ctx.fill(); }
-
-    if (isEnd) {
-      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-      this._label(cx, LOGICAL_H * 0.44, "THE END", "center", "#fff", 52, true);
-      this._label(cx, LOGICAL_H * 0.44 + 44, "+1 🍗", "center", "#e8c060", 24, true);
-      if (((t / 500) | 0) % 2 === 0) this._label(cx, LOGICAL_H - 36, "tap for the Pecking Order", "center", "rgba(255,255,255,0.75)", 16);
-    }
   }
 
   // Falling confetti (deterministic from t + index).
@@ -1459,6 +1456,39 @@ export class Renderer {
       ctx.fillRect(-3, -5, 6, 10);
       ctx.restore();
     }
+  }
+
+  // The champion's flock — a dense mix of hens and chicks in three depth rows.
+  // Used in the coronation (cheering) and the march (scattering). `flee` 0..1
+  // pushes each toward the nearest edge; `speed` scales the hop animation.
+  _endCrowd(t, opts) {
+    const flee = opts.flee || 0, spd = opts.speed || 1, baseY = opts.baseY;
+    const N = 26;
+    for (let i = 0; i < N; i++) {
+      const f = (i + 0.5) / N;
+      const row = i % 3;                              // 0 back … 2 front
+      const isChick = i % 4 === 2 || i % 7 === 0;     // chicks interspersed
+      const side = f < 0.5 ? -1 : 1;
+      const baseX = lerp(24, LOGICAL_W - 24, f) + (row - 1) * 12 * (i % 2 ? 1 : -1);
+      const x = baseX + side * flee * flee * 620;
+      const y = baseY + row * 26;                     // front rows lower (closer)
+      const hop = Math.abs(Math.sin(t / (210 / spd) + i * 1.3)) * (12 + 6 * spd);
+      if (isChick) this._chick(x, y - hop, 2.4 + row * 0.5, t / 200 + i);
+      else this._henSmall(x, y - hop, 16 + row * 5, t, { tint: 0.95, blink: i, phase: i }, true);
+    }
+  }
+
+  // A fluffy yellow chick, feet at (x, gy). Ported from Egg Time (drawChick).
+  _chick(x, gy, s, t) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.translate(x, gy + Math.sin(t) * 1.2); ctx.scale(s, s);
+    ctx.fillStyle = "rgba(0,0,0,.16)"; ctx.beginPath(); ctx.ellipse(0, 0, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#e8a13a"; ctx.fillRect(-2, -3, 1.6, 3); ctx.fillRect(0.4, -3, 1.6, 3); // legs
+    ctx.fillStyle = "#ffe05a"; ctx.beginPath(); ctx.ellipse(0, -7, 6, 6, 0, 0, Math.PI * 2); ctx.fill(); // body
+    ctx.beginPath(); ctx.arc(0, -13, 4.5, 0, Math.PI * 2); ctx.fill(); // head
+    ctx.fillStyle = "#e8a13a"; ctx.beginPath(); ctx.moveTo(4, -13); ctx.lineTo(8, -12); ctx.lineTo(4, -11); ctx.closePath(); ctx.fill(); // beak
+    ctx.fillStyle = "#2b2118"; ctx.beginPath(); ctx.arc(1.5, -14, 1, 0, Math.PI * 2); ctx.fill(); // eye
+    ctx.restore();
   }
 
   // A golden championship trophy: cup with handles on a stepped base.
