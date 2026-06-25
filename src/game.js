@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -248,7 +248,7 @@ export class Game {
     const econ = this.root.querySelector("#cr-econ");
     if (econ) {
       econ.classList.remove("blocked");
-      econ.textContent = (this.economy && this.economy.costLabel) ? this.economy.costLabel() : "";
+      econ.textContent = (this.economy && this.economy.costLabel) ? this.economy.costLabel(this.selectedId) : "";
     }
     this._drawCoach();
     this._show("tutorial");
@@ -291,8 +291,9 @@ export class Game {
 
   _onWin(timeMs) {
     this.prog.recordWin(this.selectedId, timeMs);
-    this.resultPending = { type: "win", time: timeMs };
-    if (this.callbacks.onWin) this.callbacks.onWin({ opponent: this.selectedId, timeMs });
+    // The host may return a string (e.g. "WON 1000 🪙") to show on the result screen.
+    const hostMsg = this.callbacks.onWin ? this.callbacks.onWin({ opponent: this.selectedId, timeMs }) : null;
+    this.resultPending = { type: "win", time: timeMs, hostMsg: typeof hostMsg === "string" ? hostMsg : null };
   }
 
   _onLose() {
@@ -314,9 +315,12 @@ export class Game {
       const idx = OPPONENTS.findIndex((o) => o.id === this.selectedId);
       const last = idx === OPPONENTS.length - 1;
       titleEl.textContent = last ? "CHAMPION!" : "WINNER!";
-      textEl.textContent = last
+      const body = last
         ? `You cleaned out the whole Pecking Order in this fight at ${this._fmt(r.time)}. ${FIGHTER_NAME} is the champ!`
         : `You knocked out ${cfg.name} in ${this._fmt(r.time)}. The next contender is unlocked.`;
+      // Show the host's reward line (coins won) prominently under the recap, if any.
+      textEl.textContent = body;
+      if (r.hostMsg) textEl.innerHTML = body + '<br><span class="cr-reward">' + r.hostMsg + "</span>";
       nextBtn.textContent = last ? "Take a Bow" : "Next Fight";
     } else {
       titleEl.textContent = "DOWN!";

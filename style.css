@@ -159,6 +159,8 @@ h1.cr-title {
 /* Embedded bout-cost line; turns red+bold when the host blocks a fight (can't pay). */
 #cr-econ:empty { display: none; }
 #cr-econ.blocked { color: var(--red); opacity: 1; font-weight: 800; }
+/* Host reward line on the win result (e.g. coins won), shown by the embed. */
+.cr-reward { display: inline-block; margin-top: 8px; color: var(--gold); font-weight: 900; font-size: 20px; letter-spacing: 1px; }
 
 /* ---- Opponent select: vertical "choose a bout" list (Egg Time level menu) ---- */
 .cr-levels {

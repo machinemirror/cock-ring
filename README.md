@@ -111,10 +111,10 @@ CockRing.start({
     markTutorialShown(), tutorialShown(),
   },
   economyAdapter: {                // gate fight start (spend on START, not on open)
-    startBout(id) { return { ok: true } /* or { ok:false, reason:"Needs 1🐓 + 10🔵" } */; },
-    costLabel() { return "Bout: 1🐓 + 10🔵"; },  // shown on the tutorial screen
+    startBout(id) { return { ok: true } /* or { ok:false, reason:"Needs 1🐓 + 20🔵" } */; },
+    costLabel(id) { return "Bout: 1🐓 + 20🔵"; },  // per-opponent; shown on the tutorial
   },
-  onWin: ({opponent, timeMs}) => {},
+  onWin: ({opponent, timeMs}) => "WON 1000 🪙",  // optional: return a string to show on the win screen
   onLose: ({opponent}) => {},
   onExit: () => {},
 });
@@ -122,7 +122,9 @@ CockRing.start({
 
 The economy gate runs when the player taps **FIGHT!** (not when opening the roster),
 so they can browse the Pecking Order without paying; a blocked start shows the
-`reason` in red and stays on the tutorial.
+`reason` in red and stays on the tutorial. `onWin` may **return a string** (e.g. coins
+won) that the embed shows on the win screen, and `costLabel(opponentId)`/`startBout(opponentId)`
+receive the opponent so the host can scale the cost (Egg Time charges 10🔵 × ladder rank).
 
 ## Project layout
 
