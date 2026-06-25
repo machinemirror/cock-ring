@@ -156,6 +156,9 @@ h1.cr-title {
 .cr-coach .who { color: var(--gold); font-weight: 800; }
 
 .cr-tag { margin: -6px 0 2px; font-size: 14px; opacity: 0.8; }
+/* Embedded bout-cost line; turns red+bold when the host blocks a fight (can't pay). */
+#cr-econ:empty { display: none; }
+#cr-econ.blocked { color: var(--red); opacity: 1; font-weight: 800; }
 
 /* ---- Opponent select: vertical "choose a bout" list (Egg Time level menu) ---- */
 .cr-levels {

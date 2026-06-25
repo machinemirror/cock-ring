@@ -87,6 +87,43 @@ CockRing.start({ containerId: "app", startOpponent: "rat",
 Set `window.COCK_RING_NO_AUTOSTART = true` before loading `src/main.js`, then call
 `CockRing.start({ containerId, ... })` from the host.
 
+### Standalone vs embedded
+
+The API is **backwards compatible** — standalone mode is unchanged:
+
+- **Standalone** uses its own `Progression` (localStorage key `cockring.progress.v1`)
+  and shows **Reset Progress** on the title screen.
+- **Embedded** (the host passes `embedded: true`) skips the title and lands on the
+  Pecking Order, hides Reset, and turns the roster's "Back" into a host **Exit**
+  button (Egg Time labels it "🏠 Return to Hen House") that calls `onExit`.
+
+Host hooks (all optional; standalone ignores them):
+
+```js
+CockRing.start({
+  containerId: "cock-ring-host",
+  embedded: true,
+  hideReset: true,                 // defaults to `embedded`
+  exitLabel: "🏠 Return to Hen House",
+  progressAdapter: {               // host owns save instead of localStorage
+    get(), isUnlocked(id), isDefeated(id),
+    recordWin(id, timeMs), recordLoss(id),
+    markTutorialShown(), tutorialShown(),
+  },
+  economyAdapter: {                // gate fight start (spend on START, not on open)
+    startBout(id) { return { ok: true } /* or { ok:false, reason:"Needs 1🐓 + 10🔵" } */; },
+    costLabel() { return "Bout: 1🐓 + 10🔵"; },  // shown on the tutorial screen
+  },
+  onWin: ({opponent, timeMs}) => {},
+  onLose: ({opponent}) => {},
+  onExit: () => {},
+});
+```
+
+The economy gate runs when the player taps **FIGHT!** (not when opening the roster),
+so they can browse the Pecking Order without paying; a blocked start shows the
+`reason` in red and stays on the tutorial.
+
 ## Project layout
 
 ```txt

@@ -13,7 +13,7 @@ const { Progression } = await import(`./progression.js?v=${V}`);
 const { OPPONENTS, opponentById } = await import(`./opponents.js?v=${V}`);
 
 const FIGHTER_NAME = "Large Cock";
-const VERSION = "0.3.6";
+const VERSION = "0.4.0";
 
 const TEMPLATE = `
   <div class="cr-stage" id="cr-stage">
@@ -42,6 +42,7 @@ const TEMPLATE = `
         <canvas id="cr-coach-canvas" width="72" height="72"></canvas>
         <div><span class="who">Coach Hamhock:</span> <span id="cr-tut-tip"></span></div>
       </div>
+      <p class="cr-tag" id="cr-econ"></p>
       <button class="cr-btn" id="cr-begin">FIGHT!</button>
       <button class="cr-btn secondary" id="cr-back-select">Back</button>
     </div>
@@ -69,6 +70,11 @@ export class Game {
     this.screen = "start";      // start|select|tutorial|fight|pause|result|ending
     this.selectedId = null;
     this.callbacks = {};        // onWin/onLose/onExit from embed options
+    // Embed wiring (set in mount). Standalone defaults: own Progression, no economy.
+    this.embedded = false;
+    this.hideReset = false;
+    this.prog = Progression;    // host may swap in a progressAdapter
+    this.economy = null;        // host may supply an economyAdapter (gates fight start)
 
     this.raf = null;
     this.lastTs = 0;
@@ -90,6 +96,13 @@ export class Game {
       onLose: options.onLose,
       onExit: options.onExit,
     };
+    // Embedded mode: host owns progression + economy, hides Reset, lands on the
+    // roster (not the title), and the select "Back" becomes an Exit-to-host button.
+    this.embedded = !!options.embedded;
+    this.hideReset = options.hideReset != null ? !!options.hideReset : this.embedded;
+    this.prog = options.progressAdapter || Progression;
+    this.economy = options.economyAdapter || null;
+    this.exitLabel = options.exitLabel || "🚪 Exit";
 
     this.canvas = this.root.querySelector("#cr-canvas");
     this.ctx = this.canvas.getContext("2d");
@@ -113,6 +126,8 @@ export class Game {
     if (options.startOpponent && opponentById(options.startOpponent)) {
       this.selectedId = options.startOpponent;
       this._showTutorial();
+    } else if (this.embedded) {
+      this._show("select");   // embedded: skip the title screen, open the Pecking Order
     } else {
       this._show("start");
     }
@@ -124,6 +139,13 @@ export class Game {
     if (this.input) this.input.disable();
     window.removeEventListener("resize", this._onResize);
     if (this.root) this.root.innerHTML = "";
+  }
+
+  // Embedded Exit/Back: tear down and hand control back to the host (Egg Time).
+  _exitEmbed() {
+    const onExit = this.callbacks && this.callbacks.onExit;
+    this.unmount();
+    if (onExit) onExit();
   }
 
   // Only let fight gestures through while actually fighting.
@@ -157,7 +179,16 @@ export class Game {
     const q = (id) => this.root.querySelector(id);
     q("#cr-play").onclick = () => { this.audio.resume(); this._show("select"); };
     q("#cr-reset").onclick = () => { Progression.reset(); this._refreshRoster(); this._buildRoster(); };
-    q("#cr-back-start").onclick = () => this._show("start");
+    if (this.hideReset) q("#cr-reset").classList.add("hidden");
+    // Embedded: the roster's "Back to Title" becomes Exit-to-host (there's no title
+    // here). The host supplies the label (Egg Time uses "🏠 Return to Hen House").
+    if (this.embedded) {
+      const ex = q("#cr-back-start");
+      ex.textContent = this.exitLabel || "🚪 Exit";
+      ex.onclick = () => this._exitEmbed();
+    } else {
+      q("#cr-back-start").onclick = () => this._show("start");
+    }
     q("#cr-back-select").onclick = () => this._show("select");
     q("#cr-take-bow").onclick = () => { this.audio.resume(); this._startEnding(); };
     q("#cr-begin").onclick = () => this._startFight();
@@ -185,11 +216,11 @@ export class Game {
   }
 
   _refreshRoster() {
-    const state = Progression.get();
+    const state = this.prog.get();
     this.root.querySelectorAll(".cr-level").forEach((btn, i) => {
       const id = btn.dataset.id;
-      const unlocked = Progression.isUnlocked(id);
-      const beaten = Progression.isDefeated(id);
+      const unlocked = this.prog.isUnlocked(id);
+      const beaten = this.prog.isDefeated(id);
       btn.classList.toggle("locked", !unlocked);
       btn.classList.toggle("beaten", beaten);
       const sub = btn.querySelector("small");
@@ -206,15 +237,27 @@ export class Game {
     if (rec) rec.textContent = `Wins: ${state.wins}   Losses: ${state.losses}`;
     // "Take a Bow" replays the champion ending once Todd is beaten.
     const bow = this.root.querySelector("#cr-take-bow");
-    if (bow) bow.classList.toggle("hidden", !Progression.isDefeated("todd"));
+    if (bow) bow.classList.toggle("hidden", !this.prog.isDefeated("todd"));
   }
 
   _showTutorial() {
     const cfg = opponentById(this.selectedId);
     this.root.querySelector("#cr-tut-name").textContent = `Next up: ${cfg.name}`;
     this.root.querySelector("#cr-tut-tip").textContent = cfg.personality;
+    // Embedded: show the host's bout cost (e.g. "Bout: 1🐓 + 10🔵").
+    const econ = this.root.querySelector("#cr-econ");
+    if (econ) {
+      econ.classList.remove("blocked");
+      econ.textContent = (this.economy && this.economy.costLabel) ? this.economy.costLabel() : "";
+    }
     this._drawCoach();
     this._show("tutorial");
+  }
+
+  // Block fight start when the host economy says the player can't pay the bout cost.
+  _showEconBlock(reason) {
+    const el = this.root.querySelector("#cr-econ");
+    if (el) { el.textContent = reason || "Can't start this bout"; el.classList.add("blocked"); }
   }
 
   // Draw Coach Hamhock (Egg Time pig) into the tutorial bubble's mini-canvas.
@@ -230,7 +273,13 @@ export class Game {
 
   _startFight() {
     const cfg = opponentById(this.selectedId);
-    Progression.markTutorialShown();
+    // Host economy gate: spend the bout cost (1🐓 + 10🔵) NOW, when the fight
+    // actually starts. Blocked if the player can't pay — stay on the tutorial.
+    if (this.economy) {
+      const res = this.economy.startBout(this.selectedId);
+      if (!res || !res.ok) { this.audio.resume(); this._showEconBlock(res && res.reason); return; }
+    }
+    this.prog.markTutorialShown();
     this.player.reset();
     this.resultPending = null;
     this.engine = new FightEngine(cfg, this.player, this.audio, {
@@ -241,13 +290,13 @@ export class Game {
   }
 
   _onWin(timeMs) {
-    Progression.recordWin(this.selectedId, timeMs);
+    this.prog.recordWin(this.selectedId, timeMs);
     this.resultPending = { type: "win", time: timeMs };
     if (this.callbacks.onWin) this.callbacks.onWin({ opponent: this.selectedId, timeMs });
   }
 
   _onLose() {
-    Progression.recordLoss(this.selectedId);
+    this.prog.recordLoss(this.selectedId);
     this.resultPending = { type: "lose" };
     if (this.callbacks.onLose) this.callbacks.onLose({ opponent: this.selectedId });
   }
@@ -289,7 +338,7 @@ export class Game {
     const idx = OPPONENTS.findIndex((o) => o.id === this.selectedId);
     const next = OPPONENTS[idx + 1];
     if (this.root.querySelector("#cr-result-title").textContent !== "DOWN!" &&
-        next && Progression.isUnlocked(next.id)) {
+        next && this.prog.isUnlocked(next.id)) {
       this.selectedId = next.id;
       this._showTutorial();
     } else if (this.root.querySelector("#cr-result-title").textContent === "DOWN!") {

@@ -59,6 +59,15 @@ src/progression.js  localStorage save (key `cockring.progress.v1`)
   `getProgress()`. `start({containerId, startOpponent, onWin, onLose, onExit})`.
   Set `window.COCK_RING_NO_AUTOSTART=true` to suppress the standalone auto-start
   when embedding.
+- **Embedding (Egg Time host), backwards-compatible** — extra `start()` options:
+  `embedded` (land on the roster + show a host Exit button), `hideReset` (hide Reset
+  Progress; defaults to `embedded`), `exitLabel` (Exit button text), `progressAdapter`
+  (host save: `get/isUnlocked/isDefeated/recordWin/recordLoss/markTutorialShown/
+  tutorialShown` — swapped in for the local `Progression`), and `economyAdapter`
+  (`startBout(id)→{ok}|{ok:false,reason}`, `costLabel?()` — gates **FIGHT!**, spent on
+  fight start). Implemented in `Game` (game.js): `this.prog`/`this.economy` replace
+  direct `Progression` reads; standalone keeps using `Progression` + the title screen.
+  Egg Time vendors a copy of this `src/` under `egg-time/src/vendor/cock-ring/`.
 
 ## Cache-busting + versioning (IMPORTANT)
 

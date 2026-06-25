@@ -18,6 +18,15 @@ const CockRing = {
    * @param {Function} [options.onWin]   ({opponent, timeMs}) => void
    * @param {Function} [options.onLose]  ({opponent}) => void
    * @param {Function} [options.onExit]  () => void
+   *
+   * Embedding (host = Egg Time) — all optional, standalone ignores them:
+   * @param {boolean}  [options.embedded]   land on the roster, show a host Exit button
+   * @param {boolean}  [options.hideReset]  hide "Reset Progress" (defaults to embedded)
+   * @param {string}   [options.exitLabel]  text for the embedded Exit button
+   * @param {Object}   [options.progressAdapter]  host save: {get,isUnlocked,isDefeated,
+   *                   recordWin,recordLoss,markTutorialShown,tutorialShown}
+   * @param {Object}   [options.economyAdapter]   gate fight start: {startBout(id)=>
+   *                   ({ok:true}|{ok:false,reason}), costLabel?()}
    */
   start(options = {}) {
     const containerId = options.containerId || "app";
